@@ -1,3 +1,4 @@
+
 use rasdf::*;
 
 #[test]
@@ -23,6 +24,16 @@ fn add_broken_row() {
     assert!(dbase.is_empty());
 }
 
+#[test]
+fn find_rows() {
+    let mut dbase = AsdfBase::new();
+    dbase.add_line("/home/tim/tmp/|4.5|1234567|x");
+    dbase.add_line("/home/tim/Documents/|6.7|1237890");
+
+    let to_find: Vec<String> = vec![String::from("tim"), String::from("t")];
+    assert_eq!(2, dbase.find_list(ScoreMethod::Frecency, &to_find).len());
+
+}
 
 #[test]
 fn find_row() {
@@ -30,8 +41,12 @@ fn find_row() {
     dbase.add_line("/home/tim/tmp/|4.5|1234567|x");
     dbase.add_line("/home/tim/Documents/|6.7|1237890");
 
-    assert_eq!(vec!["/home/tim/tmp/"], dbase.find(&["tim", "tmp"]));
-    assert_eq!(Vec::<&str>::new(), dbase.find(&["tim", "tmp", "reset"]));
+    let mut to_find: Vec<String> = vec![String::from("tim"), String::from("tmp")];
+    // refactor AsdfBase::find to return an Option<&str>
+    assert_eq!(Some("/home/tim/tmp/"), dbase.find(ScoreMethod::Frecency, &to_find));
+
+    to_find.push(String::from("missing"));
+    assert!(dbase.find(ScoreMethod::Frecency, &to_find).is_none());
 }
 
 #[test]
@@ -47,31 +62,43 @@ fn read_str_of_lines() {
 #[test]
 fn read_data_file_successful() {
     let dbase = AsdfBase::from_file("./asdf.dat");
-    assert_eq!(Vec::<&str>::new(), dbase.find(&["node", "nosuchfile.js"]));
+    assert!(! dbase.is_empty());
 }
 
 #[test]
 fn read_data_file_unsuccessful() {
-    let dbase = AsdfBase::from_file("./asdf.dat");
-    assert_eq!(Vec::<&str>::new(), dbase.find(&["node", "nosuchfile.js"]));
+    let dbase = AsdfBase::from_file("./missing.file");
+    assert!(dbase.is_empty());
 }
 
 #[test]
 fn add_new_data() {
-    let dbase = &mut AsdfBase::from_file("./asdf.dat");
+    let mut dbase = AsdfBase::from_file("./asdf.dat");
     let original_length = dbase.len();
     dbase.add("/tmp/newrow/newfile.doc", "");
-    assert_eq!(original_length + 1, dbase.len());
+    assert_ne!(original_length, dbase.len());
 }
 
 #[test]
 fn check_entry() {
-    let dbase = &mut AsdfBase::from_file("./asdf.dat");
+    let dbase = &mut AsdfBase::new();
     let tdir = "/tmp/newrow/newfile.doc";
 
     dbase.add(tdir, "+");
     assert_eq!(1.0, dbase.entry(tdir).unwrap().rating);
     assert_eq!("+", dbase.entry(tdir).unwrap().flags);
+}
+
+#[test]
+fn check_scoring() {
+    
+    let now = current_timestamp() - 700;
+
+    let dbase = AsdfBase::from_data(
+        format!("/home/tim/tmp/|1.5|{}|x\n", now).as_str()
+        );
+
+    assert_eq!(9.0, dbase.entry("/home/tim/tmp/").unwrap().score(ScoreMethod::Frecency, now));
 }
 
 #[test]
@@ -96,3 +123,4 @@ fn write_to_file() {
     assert!(dbase.write_out(newfile).is_ok());
     assert!(dbase.write_out("/no/such/file.dat").is_err());
 }
+

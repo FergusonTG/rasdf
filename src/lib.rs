@@ -9,12 +9,32 @@ use std::time::SystemTime;
 
 const DATAFILE: &str = "/home/tim/.local/share/fasd/fasd.dat";
 
+#[derive(Copy, Clone, Debug)]
+pub enum ScoreMethod { Date, Rating, Frecency }
+
 #[derive(Debug)]
 pub struct AsdfBaseData {
     pub rating: f32,
     pub date: u64,
     pub flags: String,
 }
+
+impl AsdfBaseData {
+    pub fn score(&self, method: ScoreMethod, now: u64) -> f32 {
+        match method {
+            ScoreMethod::Date       => self.date as f32,
+            ScoreMethod::Rating     => self.rating,
+            ScoreMethod::Frecency => 
+                self.rating * match now - self.date {
+                    0 ..= 3600       => 6.0,
+                    3601 ..= 86400   => 4.0,
+                    86401 ..= 604800 => 2.0,
+                    _                => 1.0,
+                },
+        }
+    }
+}
+
 
 pub struct AsdfBase {
     contents: HashMap<String, AsdfBaseData>,
@@ -105,19 +125,18 @@ impl AsdfBase {
     }
 
     pub fn from_file(filename: &str) -> AsdfBase {
-        let contents = fs::read_to_string(&filename)
-            .unwrap_or_else(|_| format!(
-                    "Something went wrong reading \"{}\".", &filename
-                    ));
-
-        AsdfBase::from_data(&contents)
+        if let Ok(contents) = fs::read_to_string(&filename) {
+            AsdfBase::from_data(&contents)
+        } else {
+            AsdfBase::new()
+        }
     }
 
     pub fn write_out(&self, filename: &str) -> std::io::Result<()> {
         let path = Path::new(&env::temp_dir()).join("myfile.txt");
         let mut file = fs::File::create(&path).unwrap();
 
-        if let Err(e) = file.write(b"Brian was here. Briefly.\n") {
+        if let Err(e) = file.write(b"/etc/wizard|2.34|12345678|+\n") {
             println!("Could not write to file: {}\n", e);
             }
 
@@ -126,8 +145,9 @@ impl AsdfBase {
             )
     }
 
-    pub fn find(&self, elements: &[&str]) -> Vec<&str> {
+    pub fn find_list(&self, method: ScoreMethod, elements: &Vec<String>) -> Vec<(&str, f32)> {
         let mut v = Vec::<&str>::new();
+        let now = current_timestamp();
 
         'keys: for key in self.contents.keys() {
             let mut k = &key[..];
@@ -144,10 +164,24 @@ impl AsdfBase {
             }
             v.push(key);
         }
-        v
+        v.iter().map(|path| (*path, self.entry(path).unwrap().score(method, now))).collect()
+    }
+
+    #[allow(unused_variables)]
+    pub fn find(&self, method: ScoreMethod, elements: &Vec<String>) -> Option<&str> {
+        let v = self.find_list(method, elements);
+        if v.is_empty() { None } else { Some(v[0].0) }
     }
 }
 
 pub fn default_datafile() -> String {
     env::var("RASDF_DATAFILE").unwrap_or_else(|_| String::from(DATAFILE))
 }
+
+pub fn current_timestamp() -> u64 {
+        SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+}
+
