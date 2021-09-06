@@ -13,7 +13,7 @@ fn main() {
 
     let filename = rasdf::default_datafile();
     //let filename = "./asdf.dat";
-    println!("Reading from {}\n", &filename);
+    //println!("Reading from {}\n", &filename);
 
     match cmnd.as_str() {
         "add" => {
