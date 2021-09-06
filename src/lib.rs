@@ -4,7 +4,7 @@ use std::env;
 use std::fs;
 use std::collections::HashMap;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, MAIN_SEPARATOR};
 use std::time::SystemTime;
 
 const DATAFILE: &str = "/home/tim/.local/share/fasd/fasd.dat";
@@ -136,41 +136,59 @@ impl AsdfBase {
         let path = Path::new(&env::temp_dir()).join("myfile.txt");
         let mut file = fs::File::create(&path).unwrap();
 
-        if let Err(e) = file.write(b"/etc/wizard|2.34|12345678|+\n") {
-            println!("Could not write to file: {}\n", e);
-            }
+        // write data out to temp file
+        for (key, value) in &self.contents {
+            file.write(format!("{}|{}|{}|{}\n", key, value.rating, value.date, value.flags).as_bytes())?;
+        }
 
-        fs::rename(&path, &filename).or(
-            if let Err(e) = fs::copy(&path, &filename) { Err(e) } else { Ok(()) }
-            )
+        // and copy that back to proper place
+        fs::rename(&path, &filename)
+            .or (match fs::copy(&path, &filename) {
+                Err(e) => Err(e),
+                Ok(_)  => Ok(()),
+            })
     }
 
     pub fn find_list(&self, method: ScoreMethod, elements: &Vec<String>) -> Vec<(&str, f32)> {
         let mut v = Vec::<&str>::new();
         let now = current_timestamp();
 
-        'keys: for key in self.contents.keys() {
-            let mut k = &key[..];
+        'paths: for path in self.contents.keys() {
+            let mut k = &path[..];
             for element in elements {
-                if let Some(p) = key.find(element) {
-                    if let Some(s) = k.get((p + element.len())..) {
-                        k = s
+                if let Some(p) = path.find(element) {
+                    k = if let Some(s) = k.get((p + element.len())..) {
+                        s
                     } else {
-                        k = ""
+                        ""
                     };
                 } else {
-                    continue 'keys;
+                    continue 'paths;
                 }
             }
-            v.push(key);
+            // only add the path if the last element was in the last segment.
+            if let None = k.find(MAIN_SEPARATOR) { 
+                v.push(path) 
+            };
         }
         v.iter().map(|path| (*path, self.entry(path).unwrap().score(method, now))).collect()
     }
 
     #[allow(unused_variables)]
     pub fn find(&self, method: ScoreMethod, elements: &Vec<String>) -> Option<&str> {
-        let v = self.find_list(method, elements);
-        if v.is_empty() { None } else { Some(v[0].0) }
+        let v  = self.find_list(method, elements);
+
+        let mut ret:(Option<&str>, f32) = (None, f32::NAN);
+        for t in v {
+            if ret.0.is_none() {
+                ret = (Some(t.0), t.1);
+            } else {
+                if ret.1.lt(&t.1) {
+                    ret = (Some(t.0), t.1);
+                }
+            }
+        }
+        ret.0
     }
 }
 

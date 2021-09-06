@@ -4,8 +4,8 @@ use rasdf::*;
 #[test]
 fn add_two_rows() {
     let mut dbase = AsdfBase::new();
-    let row_one = "/home/tim/tmp/|4.5|1234567|x";
-    let row_two = "/home/tim/Documents/|6.7|1237890";
+    let row_one = "/home/tim/tmp|4.5|1234567|x";
+    let row_two = "/home/tim/Documents|6.7|1237890";
     let row_three = "";
 
     assert_eq!(1, dbase.add_line(row_one));
@@ -19,7 +19,7 @@ fn add_two_rows() {
 #[should_panic]
 fn add_broken_row() {
     let mut dbase = AsdfBase::new();
-    let row_one = "/home/tim/tmp/|4.5|1234567|x|";
+    let row_one = "/home/tim/tmp|4.5|1234567|x|";
     dbase.add_line(row_one);
     assert!(dbase.is_empty());
 }
@@ -27,23 +27,28 @@ fn add_broken_row() {
 #[test]
 fn find_rows() {
     let mut dbase = AsdfBase::new();
-    dbase.add_line("/home/tim/tmp/|4.5|1234567|x");
-    dbase.add_line("/home/tim/Documents/|6.7|1237890");
+    dbase.add_line("/home/tim/tmp|4.5|1234567|x");
+    dbase.add_line("/home/tim/Documents|6.7|1237890");
+    dbase.add_line("/home/tim/Documents/2019|6.7|1237890");
 
-    let to_find: Vec<String> = vec![String::from("tim"), String::from("t")];
+    let to_find: Vec<String> = vec![String::from("tim"), String::from("m")];
     assert_eq!(2, dbase.find_list(ScoreMethod::Frecency, &to_find).len());
 
+    assert_eq!(vec![("/home/tim/tmp", 1234567_f32)],
+               dbase.find_list(ScoreMethod::Date, &vec![String::from("tmp")])
+               );
 }
 
 #[test]
 fn find_row() {
     let mut dbase = AsdfBase::new();
-    dbase.add_line("/home/tim/tmp/|4.5|1234567|x");
-    dbase.add_line("/home/tim/Documents/|6.7|1237890");
+    dbase.add_line("/home/tim/tmp|9.5|1234567|x");
+    dbase.add_line("/home/tim/Documents|9.7|1237890");
+    dbase.add_line("/home/tim/Private/tmp|4.7|1236654");
 
     let mut to_find: Vec<String> = vec![String::from("tim"), String::from("tmp")];
     // refactor AsdfBase::find to return an Option<&str>
-    assert_eq!(Some("/home/tim/tmp/"), dbase.find(ScoreMethod::Frecency, &to_find));
+    assert_eq!(Some("/home/tim/tmp"), dbase.find(ScoreMethod::Frecency, &to_find));
 
     to_find.push(String::from("missing"));
     assert!(dbase.find(ScoreMethod::Frecency, &to_find).is_none());
