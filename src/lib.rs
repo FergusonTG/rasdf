@@ -2,15 +2,13 @@
 
 use std::env;
 use std::fs;
+
 use std::collections::HashMap;
 use std::io::Write;
-use std::path::{Path, MAIN_SEPARATOR};
-use std::time::SystemTime;
+use std::path::{PathBuf, MAIN_SEPARATOR};
 
-const DATAFILE: &str = "/home/tim/.local/share/fasd/fasd.dat";
-
-#[derive(Copy, Clone, Debug)]
-pub enum ScoreMethod { Date, Rating, Frecency }
+pub mod config;
+use config::{Config, ScoreMethod};
 
 #[derive(Debug)]
 pub struct AsdfBaseData {
@@ -20,12 +18,12 @@ pub struct AsdfBaseData {
 }
 
 impl AsdfBaseData {
-    pub fn score(&self, method: ScoreMethod, now: u64) -> f32 {
-        match method {
+    pub fn score(&self, conf: &Config) -> f32 {
+        match conf.method {
             ScoreMethod::Date       => self.date as f32,
             ScoreMethod::Rating     => self.rating,
             ScoreMethod::Frecency => 
-                self.rating * match now - self.date {
+                self.rating * match conf.current_time - self.date {
                     0 ..= 3600       => 6.0,
                     3601 ..= 86400   => 4.0,
                     86401 ..= 604800 => 2.0,
@@ -67,7 +65,50 @@ impl AsdfBase {
         self.contents.get(path)
     }
 
+    pub fn add(&mut self, conf: &Config, path: &str, flags: &str) {
+        
+        let path_result = fs::canonicalize(path);
+        if path_result.is_err() { 
+            // println!("Can't add {}", path);
+            return; }
+
+        let path = canonical_string(path);
+        if path.is_empty() {
+            // println!("Path is empty: {}", path);
+            return; };
+
+        if let Some(data) = self.contents.get_mut(&path) {
+            // println!("Updating {}", path); 
+            data.rating += 1.0 / data.rating;
+            data.date = conf.current_time;
+            for c in flags.chars() {
+                if !data.flags.contains(c) {
+                    data.flags.push(c);
+                }
+            }
+        } else {
+            // println!("Adding new path {}", path); 
+            self.contents.insert(
+                path,
+                AsdfBaseData {
+                    rating: 1.0,
+                    date: conf.current_time,
+                    flags: String::from(flags),
+                },
+            );
+        }
+    }
+
+    pub fn remove(&mut self, row: &str) {
+        if self.contents.remove(row).is_some() {
+            // println!("Row removed: {}", row);
+        } else {
+            // println!("Could not find row to remove: {}", row);
+        };
+    }
+
     pub fn add_line(&mut self, row: &str) -> usize {
+        // ignore a blank line
         if row.is_empty() { return self.contents.len(); }
 
         let mut v: Vec<&str> = row.split('|').collect();
@@ -75,8 +116,10 @@ impl AsdfBase {
             v.push("");
         }
         if v.len() == 4 {
+            let path = canonical_string(v[0]);
+            if path.is_empty() { self.contents.len(); }
             self.contents.insert(
-                v[0].to_string(),
+                path,
                 AsdfBaseData {
                     rating: v[1].parse::<f32>().unwrap(),
                     date: v[2].parse::<u64>().unwrap(),
@@ -90,32 +133,6 @@ impl AsdfBase {
         self.contents.len()
     }
 
-    pub fn add(&mut self, path: &str, flags: &str) {
-        let now = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-
-        if let Some(data) = self.contents.get_mut(path) {
-            data.rating += 1.0;
-            data.date = now;
-            for c in flags.chars() {
-                if !data.flags.contains(c) {
-                    data.flags.push(c);
-                }
-            }
-        } else {
-            self.contents.insert(
-                String::from(path),
-                AsdfBaseData {
-                    rating: 1.0,
-                    date: now,
-                    flags: String::from(flags),
-                },
-            );
-        }
-    }
-
     pub fn from_data(lines: &str) -> AsdfBase {
         let mut dbase = AsdfBase::new();
         for line in lines.split('\n') {
@@ -124,16 +141,37 @@ impl AsdfBase {
         dbase
     }
 
-    pub fn from_file(filename: &str) -> AsdfBase {
-        if let Ok(contents) = fs::read_to_string(&filename) {
+    pub fn from_file(conf: &Config) -> AsdfBase {
+        if let Ok(contents) = fs::read_to_string(&conf.datafile) {
+            // eprintln!("{}", &contents);
             AsdfBase::from_data(&contents)
         } else {
             AsdfBase::new()
         }
     }
 
-    pub fn write_out(&self, filename: &str) -> std::io::Result<()> {
-        let path = Path::new(&env::temp_dir()).join("myfile.txt");
+    pub fn clean(&mut self, conf: &Config) {
+
+        if self.len() <= conf.maxlines { return; };
+
+        for rec in self.contents.values_mut() {
+            rec.rating *= 0.9;
+        }
+
+        let mut keys: Vec<_> = self.contents.keys().map(|f| (f.to_string(), self.contents[f].rating)).collect();
+        keys.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        keys.truncate(keys.len() - conf.maxlines);
+
+        for f in keys.iter() {
+            self.contents.remove(&f.0);
+        };
+        return;
+        
+    }
+
+    pub fn write_out(&self, conf: &Config) -> std::io::Result<()> {
+        let path = env::temp_dir().join("myfile.txt");
+        // println!("Writing to temp file {:?}", path);
         let mut file = fs::File::create(&path).unwrap();
 
         // write data out to temp file
@@ -142,41 +180,46 @@ impl AsdfBase {
         }
 
         // and copy that back to proper place
-        fs::rename(&path, &filename)
-            .or (match fs::copy(&path, &filename) {
+        // println!("Copying to {:?}", &conf.datafile);
+        fs::rename(&path, &conf.datafile)
+            .or(match fs::copy(&path, &conf.datafile) {
                 Err(e) => Err(e),
                 Ok(_)  => Ok(()),
             })
     }
 
-    pub fn find_list(&self, method: ScoreMethod, elements: &Vec<String>) -> Vec<(&str, f32)> {
+    pub fn find_list(&self, conf: &Config, elements: &Vec<String>) -> Vec<(&str, f32)> {
         let mut v = Vec::<&str>::new();
-        let now = current_timestamp();
 
         'paths: for path in self.contents.keys() {
-            let mut k = &path[..];
+
+            // should be unneccessary since all paths are canonicalized
+            let pathstring = canonical_string(&path);
+            if pathstring.is_empty() { continue 'paths };
+
+            let p = PathBuf::from(&pathstring);
+            if ! conf.find_dirs && p.is_dir() { continue 'paths }
+            else if ! conf.find_files && p.is_file() { continue 'paths }
+
+            let mut start = 0usize;
             for element in elements {
-                if let Some(p) = path.find(element) {
-                    k = if let Some(s) = k.get((p + element.len())..) {
-                        s
-                    } else {
-                        ""
-                    };
+                if let Some(p) = path[start..].find(element) {
+                    start += p + element.len();
                 } else {
                     continue 'paths;
                 }
             }
             // only add the path if the last element was in the last segment.
-            if let None = k.find(MAIN_SEPARATOR) { 
-                v.push(path) 
-            };
+            if conf.strict == false || path[start..].find(MAIN_SEPARATOR).is_none() { 
+                v.push(&path);
+            }
         }
-        v.iter().map(|path| (*path, self.entry(path).unwrap().score(method, now))).collect()
+        // collect each path into a (path, score) tuple
+        v.iter().map(|path| (*path, self.entry(path).unwrap().score(&conf))).collect()
     }
 
-    #[allow(unused_variables)]
-    pub fn find(&self, method: ScoreMethod, elements: &Vec<String>) -> Option<&str> {
-        let v  = self.find_list(method, elements);
+    pub fn find(&self, conf: &Config, elements: &Vec<String>) -> Option<&str> {
+        let v  = self.find_list(&conf, elements);
 
         let mut ret:(Option<&str>, f32) = (None, f32::NAN);
         for t in v {
@@ -192,14 +235,16 @@ impl AsdfBase {
     }
 }
 
-pub fn default_datafile() -> String {
-    env::var("RASDF_DATAFILE").unwrap_or_else(|_| String::from(DATAFILE))
-}
+fn canonical_string(path: &str) -> String {
+    let p = PathBuf::from(path);
 
-pub fn current_timestamp() -> u64 {
-        SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_secs()
+    match p.canonicalize() {
+        Ok(pathbuf) => {
+            match pathbuf.to_str() {
+                Some(pathstring) => pathstring.to_string(),
+                None => String::new(),
+            }
+        }
+        _ => return String::new(),
+    }
 }
-
