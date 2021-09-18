@@ -6,6 +6,8 @@ use std::fs;
 use std::collections::HashMap;
 use std::io::Write;
 use std::path::{PathBuf, MAIN_SEPARATOR};
+use std::cmp::Ordering;
+
 
 pub mod config;
 use config::{Config, ScoreMethod};
@@ -188,38 +190,60 @@ impl AsdfBase {
             })
     }
 
-    pub fn find_list(&self, conf: &Config, elements: &Vec<String>) -> Vec<(&str, f32)> {
+    pub fn find_list(&self, conf: &Config) -> Vec<(&str, f32)> {
         let mut v = Vec::<&str>::new();
+
+        let elements: Vec<String> = match conf.case_sensitive {
+            true  => conf.arguments.clone(),
+            false => conf.arguments.iter().map(|s| s.to_lowercase()).collect(),
+        };
 
         'paths: for path in self.contents.keys() {
 
             // should be unneccessary since all paths are canonicalized
-            let pathstring = canonical_string(&path);
+            let mut pathstring = canonical_string(&path);
             if pathstring.is_empty() { continue 'paths };
 
+            // check if we're looking for dirs or folders (or both)
             let p = PathBuf::from(&pathstring);
             if ! conf.find_dirs && p.is_dir() { continue 'paths }
             else if ! conf.find_files && p.is_file() { continue 'paths }
 
+            // if case insensitive, convert everything to lowercase
+            if ! conf.case_sensitive {
+                pathstring = pathstring.to_lowercase();
+            };
+
             let mut start = 0usize;
-            for element in elements {
-                if let Some(p) = path[start..].find(element) {
+            
+            for element in elements.iter() {
+                if let Some(p) = pathstring[start..].find(element) {
                     start += p + element.len();
                 } else {
                     continue 'paths;
                 }
             }
             // only add the path if the last element was in the last segment.
-            if conf.strict == false || path[start..].find(MAIN_SEPARATOR).is_none() { 
+            if conf.strict == false || pathstring[start..].find(MAIN_SEPARATOR).is_none() { 
                 v.push(&path);
             }
         }
         // collect each path into a (path, score) tuple
-        v.iter().map(|path| (*path, self.entry(path).unwrap().score(&conf))).collect()
+        let mut result: Vec<(_, _)> = v.iter()
+            .map(|path| (*path, self.entry(path).unwrap().score(&conf)))
+            .collect();
+        result.sort_by(|a, b| {
+            let ord = a.1.partial_cmp(&b.1).unwrap();
+            match ord {
+                Ordering::Equal => a.0.cmp(&b.0),
+                _ => ord
+            }
+        });
+        result
     }
 
-    pub fn find(&self, conf: &Config, elements: &Vec<String>) -> Option<&str> {
-        let v  = self.find_list(&conf, elements);
+    pub fn find(&self, conf: &Config) -> Option<&str> {
+        let v  = self.find_list(&conf);
 
         let mut ret:(Option<&str>, f32) = (None, f32::NAN);
         for t in v {
@@ -236,6 +260,8 @@ impl AsdfBase {
 }
 
 fn canonical_string(path: &str) -> String {
+    // return a String if path is a real path
+    // otherwise ""
     let p = PathBuf::from(path);
 
     match p.canonicalize() {

@@ -45,7 +45,7 @@ fn main() {
             let dbase = rasdf::AsdfBase::from_file(&conf);
             // eprintln!("Read {} lines.", dbase.len());
 
-            let rets = dbase.find_list(&conf, &conf.arguments);
+            let rets = dbase.find_list(&conf);
             for ret in rets.iter() {
                 println!("{:6.4} {}", ret.1, ret.0);
             };
@@ -55,7 +55,7 @@ fn main() {
             let dbase = rasdf::AsdfBase::from_file(&conf);
             // eprintln!("Read {} lines.", dbase.len());
 
-            if let Some(ret) = dbase.find(&conf, &conf.arguments) {
+            if let Some(ret) = dbase.find(&conf) {
                 println!("{}", ret);
             };
         },

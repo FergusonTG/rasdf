@@ -63,13 +63,13 @@ fn find_rows() {
     dbase.add_line("/home/tim/Documents/2019|6.7|1237890");
 
     let mut conf = make_config();
-
-    let to_find: Vec<String> = vec![String::from("tim"), String::from("m")];
-    assert_eq!(2, dbase.find_list(&conf, &to_find).len());
+    conf.arguments = vec![String::from("tim"), String::from("m")];
+    assert_eq!(2, dbase.find_list(&conf).len());
 
     conf.method = config::ScoreMethod::Date;
+    conf.arguments = vec![String::from("tmp")];
     assert_eq!(vec![("/home/tim/tmp", 1234567_f32)],
-               dbase.find_list(&conf, &vec![String::from("tmp")])
+               dbase.find_list(&conf)
                );
 }
 
@@ -80,14 +80,13 @@ fn find_row() {
     dbase.add_line("/home/tim/Documents|9.7|1237890");
     dbase.add_line("/home/tim/Private/tmp|4.7|1236654");
 
-    let conf = make_config();
-
-    let mut to_find: Vec<String> = vec![String::from("tim"), String::from("tmp")];
+    let mut conf = make_config();
+    conf.arguments = vec![String::from("tim"), String::from("tmp")];
     // refactor AsdfBase::find to return an Option<&str>
-    assert_eq!(Some("/home/tim/tmp"), dbase.find(&conf, &to_find));
+    assert_eq!(Some("/home/tim/tmp"), dbase.find(&conf));
 
-    to_find.push(String::from("missing"));
-    assert!(dbase.find(&conf, &to_find).is_none());
+    conf.arguments.push(String::from("missing"));
+    assert!(dbase.find(&conf).is_none());
 }
 
 #[test]
@@ -103,9 +102,9 @@ fn read_dirs_only () {
     conf.find_dirs = true;
     conf.find_files = false;
     conf.strict = false;
+    conf.arguments = vec![String::from("tim"), String::from("tmp")];
 
-    let to_find: Vec<String> = vec![String::from("tim"), String::from("tmp")];
-    let result = dbase.find_list(&conf, &to_find);
+    let result = dbase.find_list(&conf);
     assert_eq!(1, result.len());
     assert_eq!("/home/tim/tmp", result[0].0);
 }
@@ -123,10 +122,33 @@ fn read_files_only () {
     conf.find_dirs = false;
     conf.find_files = true;
     conf.strict = false;
-
-    let to_find: Vec<String> = vec![String::from("tmp"), String::from("fil")];
-    let result = dbase.find_list(&conf, &to_find);
+    conf.arguments = vec![String::from("tmp"), String::from("fil")];
+    let result = dbase.find_list(&conf);
     assert_eq!(3, result.len());
+}
+
+#[test]
+fn read_case_sensitive() {
+    let lines = "/home/tim/tmp|4.5|1234567|x\n\
+                 /home/tim/tmp/one.file|6.5|1237890|f\n\
+                 /home/tim/tmp/two.file|5.5|1237890|a\n\
+                 /home/tim/tmp/three.file|5.5|1237890|a";
+    let dbase = AsdfBase::from_data(lines);
+    assert_eq!(4, dbase.len());
+
+    let mut conf = make_config();
+    conf.find_dirs = false;
+    conf.find_files = true;
+    conf.strict = false;
+    conf.case_sensitive = true;
+
+    conf.arguments = vec![String::from("tmp"), String::from("fil")];
+    let result = dbase.find_list(&conf);
+    assert_eq!(3, result.len());
+
+    conf.arguments = vec![String::from("TMP"), String::from("fil")];
+    let result = dbase.find_list(&conf);
+    assert_eq!(0, result.len());
 }
 
 #[test]
