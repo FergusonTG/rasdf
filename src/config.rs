@@ -76,6 +76,13 @@ impl Config<'_>  {
             arguments: vec![],
         };
 
+        // override from $RASDF_FLAGS
+        if let Ok(flags) = env::var("RASDF_FLAGS") {
+            for flag in flags.chars() {
+                config.set_flag(flag);
+            }
+        }
+
         // overriding by command line flags...
         let mut argiter = env::args().peekable();
 
@@ -85,21 +92,9 @@ impl Config<'_>  {
 
         while let Some(arg) = argiter.peek() {
             if ! arg.starts_with('-') { break; }
-            for cmd in arg.chars().skip(1) {
-                match cmd {
-                    'a' => {config.find_dirs = true; config.find_files = true;},
-                    'd' => {config.find_dirs = true; config.find_files = false;},
-                    'f' => {config.find_dirs = false; config.find_files = true;},
-                    'D' => config.method = ScoreMethod::Date,
-                    'F' => config.method = ScoreMethod::Frecency,
-                    'R' => config.method = ScoreMethod::Rating,
-                    's' => config.strict = true,
-                    'l' => config.strict = false,
-                    'c' => config.case_sensitive = true,
-                    'i' => config.case_sensitive = false,
-
-                    _   => panic!("Unrecognised option {}", cmd),
-                }}
+            for flag in arg.chars().skip(1) {
+                config.set_flag(flag);
+            }
             
             argiter.next();
         }
@@ -109,7 +104,23 @@ impl Config<'_>  {
 
         // return the config
         config
+    }
 
+    fn set_flag(&mut self, flag: char) {
+            match flag {
+                'a' => {self.find_dirs = true; self.find_files = true;},
+                'd' => {self.find_dirs = true; self.find_files = false;},
+                'f' => {self.find_dirs = false; self.find_files = true;},
+                'D' => self.method = ScoreMethod::Date,
+                'F' => self.method = ScoreMethod::Frecency,
+                'R' => self.method = ScoreMethod::Rating,
+                's' => self.strict = true,
+                'l' => self.strict = false,
+                'c' => self.case_sensitive = true,
+                'i' => self.case_sensitive = false,
+
+                _   => panic!("Unrecognised option {}", flag),
+        };
     }
 }
     

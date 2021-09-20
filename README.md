@@ -69,6 +69,11 @@ environment variables.
     Absolute path to the desired datafile.
     Default $HOME/.config/rasdf/rasdf.dat
 
+  RASDF_FLAGS
+    Set any of the command-line switches in the same way. If flags are
+    repeated or contradictory, the latest version wins: command-line
+    flags are read after the RASDF_FLAGS.
+
   RASDF_METHOD
     Scoring method: one of {date, rating, frecency}.
     Default frecency
