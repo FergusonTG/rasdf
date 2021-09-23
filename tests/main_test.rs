@@ -1,6 +1,5 @@
-
-use std::time::SystemTime;
 use std::path::PathBuf;
+use std::time::SystemTime;
 
 use rasdf::*;
 
@@ -14,7 +13,7 @@ fn add_two_rows() {
     assert_eq!(1, dbase.add_line(row_one));
     assert_eq!(2, dbase.add_line(row_two));
     assert_eq!(2, dbase.add_line(row_three));
-    assert!(! dbase.is_empty());
+    assert!(!dbase.is_empty());
     assert_eq!(2, dbase.len());
 }
 
@@ -43,7 +42,7 @@ fn read_data_file_successful() {
     conf.datafile = PathBuf::from("./asdf.dat");
 
     let dbase = AsdfBase::from_file(&conf);
-    assert!(! dbase.is_empty());
+    assert!(!dbase.is_empty());
 }
 
 #[test]
@@ -68,9 +67,7 @@ fn find_rows() {
 
     conf.method = config::ScoreMethod::Date;
     conf.arguments = vec![String::from("tmp")];
-    assert_eq!(vec![("/home/tim/tmp", 1234567_f32)],
-               dbase.find_list(&conf)
-               );
+    assert_eq!(vec![("/home/tim/tmp", 1234567_f32)], dbase.find_list(&conf));
 }
 
 #[test]
@@ -90,7 +87,7 @@ fn find_row() {
 }
 
 #[test]
-fn read_dirs_only () {
+fn read_dirs_only() {
     let lines = "/home/tim/tmp|4.5|1234567|x\n\
                  /home/tim/tmp/one.file|6.5|1237890|f\n\
                  /home/tim/tmp/two.file|5.5|1237890|a\n\
@@ -110,7 +107,7 @@ fn read_dirs_only () {
 }
 
 #[test]
-fn read_files_only () {
+fn read_files_only() {
     let lines = "/home/tim/tmp|4.5|1234567|x\n\
                  /home/tim/tmp/one.file|6.5|1237890|f\n\
                  /home/tim/tmp/two.file|5.5|1237890|a\n\
@@ -155,12 +152,17 @@ fn read_case_sensitive() {
 fn add_new_data() {
     let mut conf = make_config();
     conf.datafile = PathBuf::from("./asdf.dat");
+    conf.arguments.push(
+        PathBuf::from("./")
+            .canonicalize()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string()
+    );
 
     let mut dbase = AsdfBase::from_file(&conf);
-    dbase.remove(PathBuf::from("./")
-        .canonicalize().unwrap()
-        .to_str().unwrap()
-        );
+    dbase.remove(&conf);
 
     let original_length = dbase.len();
     dbase.add(&conf, "./", "");
@@ -187,12 +189,10 @@ fn check_entry() {
 
 #[test]
 fn check_scoring() {
-    
     let conf = make_config();
 
-    let dbase = AsdfBase::from_data(
-        format!("/home/tim/tmp|1.5|{}|x\n", conf.current_time).as_str()
-        );
+    let dbase =
+        AsdfBase::from_data(format!("/home/tim/tmp|1.5|{}|x\n", conf.current_time).as_str());
 
     assert_eq!(9.0, dbase.entry("/home/tim/tmp").unwrap().score(&conf));
 }
@@ -209,7 +209,6 @@ fn check_missing_entry() {
 
 #[test]
 fn clean_dbase() {
-    
     let mut conf = make_config();
     conf.maxlines = 5;
 
@@ -253,9 +252,9 @@ fn make_config() -> config::Config<'static> {
         maxlines: 200usize,
         logging: None,
         current_time: SystemTime::now()
-                        .duration_since(SystemTime::UNIX_EPOCH)
-                        .unwrap()
-                        .as_secs(),
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
         find_dirs: true,
         find_files: false,
         strict: true,

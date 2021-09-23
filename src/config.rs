@@ -6,15 +6,19 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 
 #[derive(Copy, Clone, Debug)]
-pub enum ScoreMethod { Date, Rating, Frecency }
+pub enum ScoreMethod {
+    Date,
+    Rating,
+    Frecency,
+}
 
 impl ScoreMethod {
     fn from(s: &str) -> Self {
         match s {
-                "date"     => ScoreMethod::Date,
-                "rating"   => ScoreMethod::Rating,
-                "frecency" => ScoreMethod::Frecency,
-                _          => ScoreMethod::Frecency,
+            "date" => ScoreMethod::Date,
+            "rating" => ScoreMethod::Rating,
+            "frecency" => ScoreMethod::Frecency,
+            _ => ScoreMethod::Frecency,
         }
     }
 }
@@ -36,7 +40,13 @@ pub struct Config<'a> {
     pub arguments: Vec<String>,
 }
 
-impl Config<'_>  {
+impl Default for Config<'_> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Config<'_> {
     pub fn new() -> Config<'static> {
         let mut config = Config {
             executable: String::new(),
@@ -57,22 +67,26 @@ impl Config<'_>  {
                 if let Ok(stringval) = env::var("RASDF_MAXLINES") {
                     if let Ok(intval) = stringval.parse::<usize>() {
                         maxlines = intval;
-                }};
+                    }
+                };
                 maxlines
             },
             logging: match env::var("RASDF_LOGFILE") {
-                Ok(filepath)   => Some(PathBuf::from(filepath)),
-                _              => None,
+                Ok(filepath) => Some(PathBuf::from(filepath)),
+                _ => None,
             },
             current_time: SystemTime::now()
-                            .duration_since(SystemTime::UNIX_EPOCH)
-                            .unwrap()
-                            .as_secs(),
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
             find_dirs: true,
             find_files: false,
             strict: true,
             case_sensitive: true,
-            cmd_blacklist: ["rasdf", "ls", "dir", "vdir", "ddir", "cd", "rm", "rmdir", "tree"].to_vec(),
+            cmd_blacklist: [
+                "rasdf", "ls", "dir", "vdir", "ddir", "cd", "rm", "rmdir", "tree",
+            ]
+            .to_vec(),
             arguments: vec![],
         };
 
@@ -91,11 +105,13 @@ impl Config<'_>  {
         config.command = argiter.next().unwrap();
 
         while let Some(arg) = argiter.peek() {
-            if ! arg.starts_with('-') { break; }
+            if !arg.starts_with('-') {
+                break;
+            }
             for flag in arg.chars().skip(1) {
                 config.set_flag(flag);
             }
-            
+
             argiter.next();
         }
 
@@ -107,22 +123,28 @@ impl Config<'_>  {
     }
 
     fn set_flag(&mut self, flag: char) {
-            match flag {
-                'a' => {self.find_dirs = true; self.find_files = true;},
-                'd' => {self.find_dirs = true; self.find_files = false;},
-                'f' => {self.find_dirs = false; self.find_files = true;},
-                'D' => self.method = ScoreMethod::Date,
-                'F' => self.method = ScoreMethod::Frecency,
-                'R' => self.method = ScoreMethod::Rating,
-                's' => self.strict = true,
-                'l' => self.strict = false,
-                'c' => self.case_sensitive = true,
-                'i' => self.case_sensitive = false,
+        match flag {
+            'a' => {
+                self.find_dirs = true;
+                self.find_files = true;
+            }
+            'd' => {
+                self.find_dirs = true;
+                self.find_files = false;
+            }
+            'f' => {
+                self.find_dirs = false;
+                self.find_files = true;
+            }
+            'D' => self.method = ScoreMethod::Date,
+            'F' => self.method = ScoreMethod::Frecency,
+            'R' => self.method = ScoreMethod::Rating,
+            's' => self.strict = true,
+            'l' => self.strict = false,
+            'c' => self.case_sensitive = true,
+            'i' => self.case_sensitive = false,
 
-                _   => panic!("Unrecognised option {}", flag),
+            _ => panic!("Unrecognised option {}", flag),
         };
     }
 }
-    
-
-
