@@ -1,3 +1,4 @@
+//! if there's a log file, write to it.
 
 use crate::config::Config;
 
@@ -7,22 +8,25 @@ use std::io::Write;
 extern crate chrono;
 use chrono::prelude::DateTime;
 use chrono::Local;
-use std::time::{UNIX_EPOCH, Duration};
+use std::time::{Duration, UNIX_EPOCH};
 
-/// if there's a log file, write to it.
 
+/// Write errors to log, or to stderr if that fails. 
 pub fn log(conf: &Config, message: &str) {
-    write_log(conf, message).expect("Failed writing to log file");
+    write_log(conf, message, true).expect("Failed writing to log file");
 }
 
-fn write_log(conf: &Config, message: &str)  -> std::io::Result<()> {
-    // Creates a new SystemTime from the specified number of whole seconds
+/// Write successful outcomes to log only, don't put on stderr.
+pub fn log_only(conf: &Config, message: &str) {
+    write_log(conf, message, false).expect("Failed writing to log file");
+}
+
+fn write_log(conf: &Config, message: &str, always: bool)
+    -> std::io::Result<()> {
+
     let d = UNIX_EPOCH + Duration::from_secs(conf.current_time);
-    // Create DateTime from SystemTime
     let datetime = DateTime::<Local>::from(d);
-    // Formats the combined date and time with the specified format string.
-    let timestamp_str = datetime.format("%Y-%m-%d %H:%M:%S"); // .to_string();
-    // Combine into a new string
+    let timestamp_str = datetime.format("%Y-%m-%d %H:%M:%S");
     let to_write = format!("{} rasdf: {}\n", timestamp_str, message);
 
     if let Some(logfile) = &conf.logging {
@@ -31,12 +35,9 @@ fn write_log(conf: &Config, message: &str)  -> std::io::Result<()> {
             .append(true)
             .open(logfile)?
             .write_all(to_write.as_bytes())?;
-    } else {
+    } else if always {
         eprintln!("{}", to_write);
     }
 
     Ok(())
-
 }
-
-

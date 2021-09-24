@@ -1,17 +1,16 @@
+use rasdf::logging::{log, log_only};
+
+
 fn main() {
     let conf = rasdf::config::Config::new();
-
-    // let _ = rasdf::logging::log(&conf, "Running rasdf");
 
     match conf.command.as_str() {
         "init" => {
             let dbase = rasdf::AsdfBase::new();
             if let Err(e) = dbase.write_out(&conf) {
-                rasdf::logging::log(&conf, &format!(
-                        "Failed to write data file: {}", e
-                        ));
+                log(&conf, &format!("Failed to write data file: {}", e));
             } else {
-                rasdf::logging::log(&conf, "New database created.");
+                log_only(&conf, "New database created.");
             }
         }
 
@@ -19,10 +18,9 @@ fn main() {
             let mut dbase = rasdf::AsdfBase::from_file(&conf);
             dbase.clean(&conf);
             if let Err(e) = dbase.write_out(&conf) {
-                rasdf::logging::log(&conf,
-                    &format!("Failed to write data file: {}", e));
+                log(&conf, &format!("Failed to write data file: {}", e));
             } else {
-                rasdf::logging::log(&conf,
+                log_only(&conf,
                     &format!("Database cleaned; {} rows written.",
                         dbase.len())
                 );
@@ -39,16 +37,15 @@ fn main() {
                 dbase.add(&conf, arg, "");
             }
             if let Err(e) = dbase.write_out(&conf) {
-                rasdf::logging::log(&conf,
-                    &format!("Failed to write data file: {}", e));
-            };
+                log(&conf, &format!("Failed to write data file: {}", e));
+            };  // don't log every addition!
         }
 
         "remove" => {
             let mut dbase = rasdf::AsdfBase::from_file(&conf);
             dbase.remove(&conf);
             if let Err(e) = dbase.write_out(&conf) {
-                rasdf::logging::log(&conf,
+                log(&conf,
                     &format!("Failed to write data file: {}", e));
             };
         }

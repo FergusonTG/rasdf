@@ -83,6 +83,12 @@ environment variables.
     Default 200
 
   RASDF_LOGFILE
-    Absolute path of logging file (not implemented yet).
+    Absolute path of logging file.
 
+## Future development
+
+I would like to implement a use for the ‘flags’ field on the database
+record. For example non-existent paths are not accepted at the moment,
+but it might be helpful to keep them when pointing to removable or
+network locations. 
 
