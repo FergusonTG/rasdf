@@ -69,8 +69,22 @@ fn main() {
             };
         }
 
-        &_ => eprintln!(
-            "{}: not a valid command <{}>",
+        &_ => eprintln!("\
+{}: not a valid command <{}>
+
+Commands: 
+    init
+    clean
+    add path [path...]
+    remove path
+    find segment [segment...]
+    find-all segment [segment..]
+
+Options:
+    a, d, f     find all resources, directories, files
+    D, F, R     use Date, Frecency, Rating
+    s, l        strict or lax last-segment restriction
+    c, i        case sensitive or insensitive",
             conf.executable, conf.command
         ),
     }
