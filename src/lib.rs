@@ -10,7 +10,7 @@ pub mod config;
 use config::{Config, ScoreMethod};
 
 pub mod logging;
-use logging::log;
+use logging::{log, log_only};
 
 #[derive(Debug)]
 pub struct AsdfBaseData {
@@ -71,18 +71,17 @@ impl AsdfBase {
     pub fn add(&mut self, conf: &Config, path: &str, flags: &str) {
         let path_result = fs::canonicalize(path);
         if path_result.is_err() {
-            // println!("Can't add {}", path);
+            log_only(&conf, &format!("Can't add {}", path));
             return;
         }
 
         let path = canonical_string(path);
         if path.is_empty() {
-            // println!("Path is empty: {}", path);
+            log(&conf, &format!("Path is empty: {}", path));
             return;
         };
 
         if let Some(data) = self.contents.get_mut(&path) {
-            // println!("Updating {}", path);
             data.rating += 1.0 / data.rating;
             data.date = conf.current_time;
             for c in flags.chars() {
@@ -91,7 +90,7 @@ impl AsdfBase {
                 }
             }
         } else {
-            // println!("Adding new path {}", path);
+            log(&conf, &format!("Adding new path: {}", path));
             self.contents.insert(
                 path,
                 AsdfBaseData {
@@ -112,7 +111,7 @@ impl AsdfBase {
         }
     }
 
-    pub fn add_line(&mut self, row: &str) -> usize {
+    pub fn add_line(&mut self, conf: &Config, row: &str) -> usize {
         // ignore a blank line
         if row.is_empty() {
             return self.contents.len();
@@ -126,26 +125,27 @@ impl AsdfBase {
             let path = canonical_string(v[0]);
             if path.is_empty() {
                 self.contents.len();
-            }
-            self.contents.insert(
-                path,
-                AsdfBaseData {
-                    rating: v[1].parse::<f32>().unwrap(),
-                    date: v[2].parse::<u64>().unwrap(),
-                    flags: v[3].to_string(),
-                },
-            );
+            };
+            if let (Ok(rating), Ok(date), flags) = (
+                v[1].parse::<f32>(),
+                v[2].parse::<u64>(),
+                v[3].to_string()) {
+                self.contents.insert(
+                    path, 
+                    AsdfBaseData {rating, date, flags}
+                );
+            };
         } else {
-            panic!("Not a valid row: `{}`", row);
+            log(&conf, &format!("Can't parse row: {}", row));
         }
 
         self.contents.len()
     }
 
-    pub fn from_data(lines: &str) -> AsdfBase {
+    pub fn from_data(conf: &Config, lines: &str) -> AsdfBase {
         let mut dbase = AsdfBase::new();
         for line in lines.split('\n') {
-            dbase.add_line(line);
+            dbase.add_line(&conf, line);
         }
         dbase
     }
@@ -153,7 +153,7 @@ impl AsdfBase {
     pub fn from_file(conf: &Config) -> AsdfBase {
         if let Ok(contents) = fs::read_to_string(&conf.datafile) {
             // eprintln!("{}", &contents);
-            AsdfBase::from_data(&contents)
+            AsdfBase::from_data(&conf, &contents)
         } else {
             AsdfBase::new()
         }
@@ -161,24 +161,31 @@ impl AsdfBase {
 
     pub fn clean(&mut self, conf: &Config) {
         if self.len() <= conf.maxlines {
+            log_only(&conf, "Nothing to clean");
             return;
         };
 
+        // Adjust all ratings down by 10%
         for rec in self.contents.values_mut() {
             rec.rating *= 0.9;
         }
 
+        // A list of (path, rating) tuples sorted on rating
         let mut keys: Vec<_> = self
             .contents
             .keys()
             .map(|f| (f.to_string(), self.contents[f].rating))
             .collect();
         keys.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-        keys.truncate(keys.len() - conf.maxlines);
 
+        // just keep the ones beyond MAXLINES
+        // and remove them from the database.
+        keys.truncate(keys.len() - conf.maxlines);
+        let keys_truncated = keys.len();
         for f in keys.iter() {
             self.contents.remove(&f.0);
         }
+        log_only(&conf, &format!("{} records truncated", keys_truncated));
     }
 
     pub fn write_out(&self, conf: &Config) -> std::io::Result<()> {
@@ -241,11 +248,14 @@ impl AsdfBase {
                 v.push(path);
             }
         }
-        // collect each path into a (path, score) tuple
+        // collect each path into a (path , score) tuple
+        // Using unwrap is okay because the path is definitely in the database.
         let mut result: Vec<(_, _)> = v
             .iter()
             .map(|path| (*path, self.entry(path).unwrap().score(conf)))
             .collect();
+
+        // Sort the results according to the score first then path
         result.sort_by(|a, b| {
             let ord = a.1.partial_cmp(&b.1).unwrap();
             match ord {

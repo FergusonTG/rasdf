@@ -77,7 +77,7 @@ impl Config<'_> {
             },
             current_time: SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()
+                .unwrap()     // okay because current time !< epoch
                 .as_secs(),
             find_dirs: true,
             find_files: false,
@@ -101,8 +101,8 @@ impl Config<'_> {
         let mut argiter = env::args().peekable();
 
         // first arguments are the executable and the command
-        config.executable = argiter.next().unwrap();
-        config.command = argiter.next().unwrap();
+        config.executable = argiter.next().unwrap_or(String::new());
+        config.command = argiter.next().unwrap_or(String::new());
 
         while let Some(arg) = argiter.peek() {
             if !arg.starts_with('-') {

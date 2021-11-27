@@ -4,6 +4,23 @@ use rasdf::logging::{log, log_only};
 fn main() {
     let conf = rasdf::config::Config::new();
 
+    let usage = "
+Commands: 
+    help
+    init
+    clean
+    add path [path...]
+    remove path
+    find segment [segment...]
+    find-all segment [segment..]
+
+Options:
+    -a, -d, -f     find all resources, directories, files
+    -D, -F, -R     use Date, Frecency, Rating
+    -s, -l         strict or lax last-segment restriction
+    -c, -i         case sensitive or insensitive
+";
+
     match conf.command.as_str() {
         "init" => {
             let dbase = rasdf::AsdfBase::new();
@@ -69,23 +86,11 @@ fn main() {
             };
         }
 
-        &_ => eprintln!("\
-{}: not a valid command <{}>
+        "help" => println!("{} COMMAND [OPTIONS...]\n{}", conf.executable, usage),
 
-Commands: 
-    init
-    clean
-    add path [path...]
-    remove path
-    find segment [segment...]
-    find-all segment [segment..]
-
-Options:
-    a, d, f     find all resources, directories, files
-    D, F, R     use Date, Frecency, Rating
-    s, l        strict or lax last-segment restriction
-    c, i        case sensitive or insensitive",
-            conf.executable, conf.command
-        ),
+        &_ => {
+            eprintln!("{}: not a valid command <{}>\n{}", 
+                    conf.executable, conf.command, usage);
+        }
     }
 }
