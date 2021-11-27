@@ -1,35 +1,98 @@
-use std::env;
+use rasdf::logging::{log, log_only};
 
-
-use rasdf;
 
 fn main() {
-    let mut argiter = env::args();
-    let prog = argiter.next().unwrap_or(String::new());
-    let cmnd = argiter.next().unwrap_or(String::new());
-    let args: Vec<String> = argiter.collect();
+    let conf = rasdf::config::Config::new();
 
-    let method = rasdf::ScoreMethod::Frecency;
+    let usage = "
+Commands: 
+    help
+    init
+    clean
+    add path [path...]
+    remove path
+    find segment [segment...]
+    find-all segment [segment..]
+
+Options:
+    -a, -d, -f     find all resources, directories, files
+    -D, -F, -R     use Date, Frecency, Rating
+    -s, -l         strict or lax last-segment restriction
+    -c, -i         case sensitive or insensitive
+";
 
     let filename = rasdf::default_datafile();
-    //let filename = "./asdf.dat";
-    //println!("Reading from {}\n", &filename);
 
-    match cmnd.as_str() {
+    match conf.command.as_str() {
+        "init" => {
+            let dbase = rasdf::AsdfBase::new();
+            if let Err(e) = dbase.write_out(&conf) {
+                log(&conf, &format!("Failed to write data file: {}", e));
+            } else {
+                log_only(&conf, "New database created.");
+            }
+        }
+
+        "clean" => {
+            let mut dbase = rasdf::AsdfBase::from_file(&conf);
+            dbase.clean(&conf);
+            if let Err(e) = dbase.write_out(&conf) {
+                log(&conf, &format!("Failed to write data file: {}", e));
+            } else {
+                log_only(&conf,
+                    &format!("Database cleaned; {} rows written.",
+                        dbase.len())
+                );
+            }
+        }
+
         "add" => {
-            let mut dbase = rasdf::AsdfBase::from_file(&filename);
-            for path in args.iter() {
-                dbase.add(path, "");
-            };
-            let _ = dbase.write_out(&filename);
-        },
-        "find" => {
-            let dbase = rasdf::AsdfBase::from_file(&filename);
-            let rets = dbase.find_list(method, &args);
-            for ret in rets.iter() {
-                println!("{:6.4} {}", ret.1, ret.0);
+            let mut dbase = rasdf::AsdfBase::from_file(&conf);
+
+            for arg in conf.arguments.iter() {
+                if conf.cmd_blacklist.iter().any(|s| arg == s) {
+                    return;
+                };
+                dbase.add(&conf, arg, "");
+            }
+            if let Err(e) = dbase.write_out(&conf) {
+                log(&conf, &format!("Failed to write data file: {}", e));
+            };  // don't log every addition!
+        }
+
+        "remove" => {
+            let mut dbase = rasdf::AsdfBase::from_file(&conf);
+            dbase.remove(&conf);
+            if let Err(e) = dbase.write_out(&conf) {
+                log(&conf,
+                    &format!("Failed to write data file: {}", e));
             };
         }
-        &_ => println!("{}: not a valid command <{}>\n", prog, cmnd),
+
+        "find-all" => {
+            let dbase = rasdf::AsdfBase::from_file(&conf);
+            // eprintln!("Read {} lines.", dbase.len());
+
+            let rets = dbase.find_list(&conf);
+            for ret in rets.iter() {
+                println!("{:6.4} {}", ret.1, ret.0);
+            }
+        }
+
+        "find" => {
+            let dbase = rasdf::AsdfBase::from_file(&conf);
+            // eprintln!("Read {} lines.", dbase.len());
+
+            if let Some(ret) = dbase.find(&conf) {
+                println!("{}", ret);
+            };
+        }
+
+        "help" => println!("{} COMMAND [OPTIONS...]\n{}", conf.executable, usage),
+
+        &_ => {
+            eprintln!("{}: not a valid command <{}>\n{}", 
+                    conf.executable, conf.command, usage);
+        }
     }
 }
