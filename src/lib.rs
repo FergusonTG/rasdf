@@ -90,7 +90,7 @@ impl AsdfBase {
                 }
             }
         } else {
-            log(&conf, &format!("Adding new path: {}", path));
+            log_only(&conf, &format!("Adding new path: {}", path));
             self.contents.insert(
                 path,
                 AsdfBaseData {

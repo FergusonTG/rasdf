@@ -12,22 +12,22 @@ kindly, I can make it better and learn at the same time.
 
 ## Command line
 
-rasdf [OPTIONS] {init,clean,add,remove,find,find-all} ARGUMENTS
+rasdf [OPTIONS] {init,clean,add,remove,find,find-all,help} ARGUMENTS
 
 ### Options: 
-  -a	Any type of result: file or folder
-  -d    Folders (directories) only
-  -f    Files only
+  -a	Any type of result: file or folder  
+  -d    Folders (directories) only  
+  -f    Files only  
 
-  -i	case-insensitive
-  -c    case-sensitive
+  -i	case-insensitive  
+  -c    case-sensitive  
 
-  -s    strict (last argument must match last segment of path)
-  -l    lax (strict does not apply)
+  -s    strict (last argument must match last segment of path)  
+  -l    lax (strict does not apply)  
 
-  -D    scoring method Date
-  -F    scoring method Frecency (default)
-  -R    scoring method Rating
+  -D    scoring method Date  
+  -F    scoring method Frecency (default)  
+  -R    scoring method Rating  
 
 ### Commands:
   init:  create a new empty database
@@ -50,6 +50,8 @@ rasdf [OPTIONS] {init,clean,add,remove,find,find-all} ARGUMENTS
 
   find-all: print paths and scores on one line each for all matches;
   matching is carried out as described above.
+
+  help:   print list of options and commands and exit. 
 
 ### Arguments
 

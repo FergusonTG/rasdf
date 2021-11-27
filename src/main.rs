@@ -21,6 +21,9 @@ Options:
     -c, -i         case sensitive or insensitive
 ";
 
+    // just to check what's going on...
+    log_only(&conf, &format!("<{}>", rasdf::config::command_line()));
+
     match conf.command.as_str() {
         "init" => {
             let dbase = rasdf::AsdfBase::new();
@@ -47,12 +50,13 @@ Options:
         "add" => {
             let mut dbase = rasdf::AsdfBase::from_file(&conf);
 
-            for arg in conf.arguments.iter() {
-                if conf.cmd_blacklist.iter().any(|s| arg == s) {
-                    return;
-                };
-                dbase.add(&conf, arg, "");
+            // don't do anything if command blacklisted
+            if conf.cmd_blacklist.iter()
+                .any(|s| *s == &conf.arguments[0]) { return; };
+            for arg in &conf.arguments {
+                dbase.add(&conf, &arg, "");
             }
+
             if let Err(e) = dbase.write_out(&conf) {
                 log(&conf, &format!("Failed to write data file: {}", e));
             };  // don't log every addition!

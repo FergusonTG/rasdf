@@ -148,3 +148,12 @@ impl Config<'_> {
         };
     }
 }
+
+/// Return the whole command line as seen by env::args
+pub fn command_line() -> String {
+    env::args().fold(String::new(), |mut s, arg| {
+        s.push_str(&arg); 
+        s.push(' ');
+        s
+    })
+}
