@@ -21,8 +21,6 @@ Options:
     -c, -i         case sensitive or insensitive
 ";
 
-    let filename = rasdf::default_datafile();
-
     match conf.command.as_str() {
         "init" => {
             let dbase = rasdf::AsdfBase::new();
