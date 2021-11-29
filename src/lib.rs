@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::path::{PathBuf, MAIN_SEPARATOR};
 
 pub mod config;
-use config::{Config, ScoreMethod};
+use config::{Config, ScoreMethod, home_dir};
 
 pub mod logging;
 use logging::{log, log_only};
@@ -69,19 +69,16 @@ impl AsdfBase {
     }
 
     pub fn add(&mut self, conf: &Config, path: &str, flags: &str) {
-        let path_result = fs::canonicalize(path);
-        if path_result.is_err() {
-            log_only(&conf, &format!("Can't add {}", path));
-            return;
-        }
-
-        let path = canonical_string(path);
-        if path.is_empty() {
-            log(&conf, &format!("Path is empty: {}", path));
-            return;
+        let pathstring = match canonical_string(path) {
+            Some(pathbuf) => match pathbuf.to_str() {
+                Some(pathstr) => pathstr.to_string(),
+                None => return,
+            },
+            None => return,
         };
 
-        if let Some(data) = self.contents.get_mut(&path) {
+        if let Some(data) = self.contents.get_mut(&pathstring) {
+            log_only(&conf, &format!("Uprating path: {}", pathstring));
             data.rating += 1.0 / data.rating;
             data.date = conf.current_time;
             for c in flags.chars() {
@@ -90,9 +87,9 @@ impl AsdfBase {
                 }
             }
         } else {
-            log_only(&conf, &format!("Adding new path: {}", path));
+            log_only(&conf, &format!("Adding new path: {}", pathstring));
             self.contents.insert(
-                path,
+                pathstring,
                 AsdfBaseData {
                     rating: 1.0,
                     date: conf.current_time,
@@ -122,16 +119,20 @@ impl AsdfBase {
             v.push("");
         }
         if v.len() == 4 {
-            let path = canonical_string(v[0]);
-            if path.is_empty() {
-                self.contents.len();
+            let pathstring = match canonical_string(v[0]) {
+                Some(pathbuf) => match pathbuf.to_str() {
+                    Some(pathstr) => pathstr.to_string(),
+                    None => return self.contents.len(),
+                },
+                None => return self.contents.len(),
             };
+
             if let (Ok(rating), Ok(date), flags) = (
                 v[1].parse::<f32>(),
                 v[2].parse::<u64>(),
                 v[3].to_string()) {
                 self.contents.insert(
-                    path, 
+                    pathstring, 
                     AsdfBaseData {rating, date, flags}
                 );
             };
@@ -217,14 +218,11 @@ impl AsdfBase {
         };
 
         'paths: for path in self.contents.keys() {
-            // should be unneccessary since all paths are canonicalized
-            let mut pathstring = canonical_string(path);
-            if pathstring.is_empty() {
-                continue 'paths;
-            };
+            // make a mutable copy to turn into lowercase.
+            let mut pathstring = path.to_string();
 
             // check if we're looking for dirs or folders (or both)
-            let p = PathBuf::from(&pathstring);
+            let p = PathBuf::from(&path);
             if (!conf.find_dirs && p.is_dir()) || (!conf.find_files && p.is_file()) {
                 continue 'paths;
             }
@@ -280,16 +278,18 @@ impl AsdfBase {
     }
 }
 
-fn canonical_string(path: &str) -> String {
+fn canonical_string(path: &str) -> Option<PathBuf> {
     // return a String if path is a real path
-    // otherwise ""
-    let p = PathBuf::from(path);
+    // otherwise None
+    let pathstring = if path.starts_with('~') {
+        if let Some(homedir) = home_dir() {
+            path.replacen('~', &homedir, 1)
+        } else {
+            return None;
+        }
+    } else {
+        String::from(path)
+    };
 
-    match p.canonicalize() {
-        Ok(pathbuf) => match pathbuf.to_str() {
-            Some(pathstring) => pathstring.to_string(),
-            None => String::new(),
-        },
-        _ => String::new(),
-    }
+    fs::canonicalize(&pathstring).ok()
 }

@@ -157,3 +157,8 @@ pub fn command_line() -> String {
         s
     })
 }
+
+/// Return the user's home directory
+pub fn home_dir() -> Option<String> {
+    env::var("HOME").ok()
+}
