@@ -50,9 +50,16 @@ Options:
         "add" => {
             let mut dbase = rasdf::AsdfBase::from_file(&conf);
 
-            // don't do anything if command blacklisted
-            if conf.cmd_blacklist.iter()
-                .any(|s| *s == &conf.arguments[0]) { return; };
+            // check that all arguments are not blacklisted
+            for arg in &conf.arguments {
+                for &cmd in &conf.cmd_blacklist {
+                    if arg == cmd {
+                        log_only(&conf,
+                            &format!("Blacklisted command <{}>", arg));
+                            return;
+                    }
+                }
+            }
             for arg in &conf.arguments {
                 dbase.add(&conf, &arg, "");
             }
