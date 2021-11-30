@@ -77,7 +77,7 @@ impl Config<'_> {
             },
             current_time: SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap()     // okay because current time !< epoch
+                .unwrap() // okay because current time !< epoch
                 .as_secs(),
             find_dirs: true,
             find_files: false,
@@ -101,8 +101,8 @@ impl Config<'_> {
         let mut argiter = env::args().peekable();
 
         // first arguments are the executable and the command
-        config.executable = argiter.next().unwrap_or(String::new());
-        config.command = argiter.next().unwrap_or(String::new());
+        config.executable = argiter.next().unwrap_or_default();
+        config.command = argiter.next().unwrap_or_default();
 
         while let Some(arg) = argiter.peek() {
             if !arg.starts_with('-') {
@@ -152,7 +152,7 @@ impl Config<'_> {
 /// Return the whole command line as seen by env::args
 pub fn command_line() -> String {
     env::args().fold(String::new(), |mut s, arg| {
-        s.push_str(&arg); 
+        s.push_str(&arg);
         s.push(' ');
         s
     })

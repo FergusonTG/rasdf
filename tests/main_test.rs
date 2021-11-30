@@ -161,7 +161,7 @@ fn add_new_data() {
             .unwrap()
             .to_str()
             .unwrap()
-            .to_string()
+            .to_string(),
     );
 
     let mut dbase = AsdfBase::from_file(&conf);
@@ -194,8 +194,10 @@ fn check_entry() {
 fn check_scoring() {
     let conf = make_config();
 
-    let dbase = AsdfBase::from_data(&conf, 
-        format!("/home/tim/tmp|1.5|{}|x\n", conf.current_time).as_str());
+    let dbase = AsdfBase::from_data(
+        &conf,
+        format!("/home/tim/tmp|1.5|{}|x\n", conf.current_time).as_str(),
+    );
 
     assert_eq!(9.0, dbase.entry("/home/tim/tmp").unwrap().score(&conf));
 }

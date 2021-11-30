@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::path::{PathBuf, MAIN_SEPARATOR};
 
 pub mod config;
-use config::{Config, ScoreMethod, home_dir};
+use config::{home_dir, Config, ScoreMethod};
 
 pub mod logging;
 use logging::{log, log_only};
@@ -78,7 +78,7 @@ impl AsdfBase {
         };
 
         if let Some(data) = self.contents.get_mut(&pathstring) {
-            log_only(&conf, &format!("Uprating path: {}", pathstring));
+            log_only(conf, &format!("Uprating path: {}", pathstring));
             data.rating += 1.0 / data.rating;
             data.date = conf.current_time;
             for c in flags.chars() {
@@ -87,7 +87,7 @@ impl AsdfBase {
                 }
             }
         } else {
-            log_only(&conf, &format!("Adding new path: {}", pathstring));
+            log_only(conf, &format!("Adding new path: {}", pathstring));
             self.contents.insert(
                 pathstring,
                 AsdfBaseData {
@@ -101,10 +101,10 @@ impl AsdfBase {
 
     pub fn remove(&mut self, conf: &Config) {
         if self.contents.remove(&conf.arguments[0]).is_none() {
-            log(&conf, &format!(
-                    "Could not find row to remove: {}",
-                    &conf.arguments[0]
-                    ));
+            log(
+                conf,
+                &format!("Could not find row to remove: {}", &conf.arguments[0]),
+            );
         }
     }
 
@@ -127,13 +127,16 @@ impl AsdfBase {
                 None => return self.contents.len(),
             };
 
-            if let (Ok(rating), Ok(date), flags) = (
-                v[1].parse::<f32>(),
-                v[2].parse::<u64>(),
-                v[3].to_string()) {
+            if let (Ok(rating), Ok(date), flags) =
+                (v[1].parse::<f32>(), v[2].parse::<u64>(), v[3].to_string())
+            {
                 self.contents.insert(
-                    pathstring, 
-                    AsdfBaseData {rating, date, flags}
+                    pathstring,
+                    AsdfBaseData {
+                        rating,
+                        date,
+                        flags,
+                    },
                 );
             };
         } else {
@@ -146,7 +149,7 @@ impl AsdfBase {
     pub fn from_data(conf: &Config, lines: &str) -> AsdfBase {
         let mut dbase = AsdfBase::new();
         for line in lines.split('\n') {
-            dbase.add_line(&conf, line);
+            dbase.add_line(conf, line);
         }
         dbase
     }
@@ -154,7 +157,7 @@ impl AsdfBase {
     pub fn from_file(conf: &Config) -> AsdfBase {
         if let Ok(contents) = fs::read_to_string(&conf.datafile) {
             // eprintln!("{}", &contents);
-            AsdfBase::from_data(&conf, &contents)
+            AsdfBase::from_data(conf, &contents)
         } else {
             AsdfBase::new()
         }
@@ -162,7 +165,7 @@ impl AsdfBase {
 
     pub fn clean(&mut self, conf: &Config) {
         if self.len() <= conf.maxlines {
-            log_only(&conf, "Nothing to clean");
+            log_only(conf, "Nothing to clean");
             return;
         };
 
@@ -186,7 +189,7 @@ impl AsdfBase {
         for f in keys.iter() {
             self.contents.remove(&f.0);
         }
-        log_only(&conf, &format!("{} records truncated", keys_truncated));
+        log_only(conf, &format!("{} records truncated", keys_truncated));
     }
 
     pub fn write_out(&self, conf: &Config) -> std::io::Result<()> {

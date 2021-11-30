@@ -1,6 +1,5 @@
 use rasdf::logging::{log, log_only};
 
-
 fn main() {
     let conf = rasdf::config::Config::new();
 
@@ -40,9 +39,9 @@ Options:
             if let Err(e) = dbase.write_out(&conf) {
                 log(&conf, &format!("Failed to write data file: {}", e));
             } else {
-                log_only(&conf,
-                    &format!("Database cleaned; {} rows written.",
-                        dbase.len())
+                log_only(
+                    &conf,
+                    &format!("Database cleaned; {} rows written.", dbase.len()),
                 );
             }
         }
@@ -54,27 +53,25 @@ Options:
             for arg in &conf.arguments {
                 for &cmd in &conf.cmd_blacklist {
                     if arg == cmd {
-                        log_only(&conf,
-                            &format!("Blacklisted command <{}>", arg));
-                            return;
+                        log_only(&conf, &format!("Blacklisted command <{}>", arg));
+                        return;
                     }
                 }
             }
             for arg in &conf.arguments {
-                dbase.add(&conf, &arg, "");
+                dbase.add(&conf, arg, "");
             }
 
             if let Err(e) = dbase.write_out(&conf) {
                 log(&conf, &format!("Failed to write data file: {}", e));
-            };  // don't log every addition!
+            }; // don't log every addition!
         }
 
         "remove" => {
             let mut dbase = rasdf::AsdfBase::from_file(&conf);
             dbase.remove(&conf);
             if let Err(e) = dbase.write_out(&conf) {
-                log(&conf,
-                    &format!("Failed to write data file: {}", e));
+                log(&conf, &format!("Failed to write data file: {}", e));
             };
         }
 
@@ -100,8 +97,10 @@ Options:
         "help" => println!("{} COMMAND [OPTIONS...]\n{}", conf.executable, usage),
 
         &_ => {
-            eprintln!("{}: not a valid command <{}>\n{}", 
-                    conf.executable, conf.command, usage);
+            eprintln!(
+                "{}: not a valid command <{}>\n{}",
+                conf.executable, conf.command, usage
+            );
         }
     }
 }
