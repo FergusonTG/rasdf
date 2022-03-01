@@ -12,6 +12,14 @@ use config::{home_dir, Config, ScoreMethod};
 pub mod logging;
 use logging::{log, log_only};
 
+/// AsdfBaseData
+/// 
+/// Data for a single path
+/// fields:
+/// + rating: float, continually updated when cleaning file
+/// + date: u64, a UNIX-style datestamp of last access
+/// + flags: string, use to be determined
+/// 
 #[derive(Debug)]
 pub struct AsdfBaseData {
     pub rating: f32,
@@ -37,6 +45,13 @@ impl AsdfBaseData {
     }
 }
 
+/// AsdfBase
+/// 
+/// Database of all the mappings
+/// path -> AsdfBaseData
+/// 
+/// path is maintained as absolute canonical String
+///
 pub struct AsdfBase {
     contents: HashMap<String, AsdfBaseData>,
 }
@@ -56,18 +71,22 @@ impl Default for AsdfBase {
 }
 
 impl AsdfBase {
+    /// number of records in database
     pub fn len(&self) -> usize {
         self.contents.len()
     }
 
+    /// true if database has no records
     pub fn is_empty(&self) -> bool {
         self.contents.is_empty()
     }
 
+    /// return basedata for given path, or None
     pub fn entry(&self, path: &str) -> Option<&AsdfBaseData> {
         self.contents.get(path)
     }
 
+    /// add or update a path record in the database
     pub fn add(&mut self, conf: &Config, path: &str, flags: &str) {
         let pathstring = match canonical_string(path) {
             Some(pathbuf) => match pathbuf.to_str() {
@@ -163,10 +182,10 @@ impl AsdfBase {
         }
     }
 
-    pub fn clean(&mut self, conf: &Config) {
+    pub fn clean(&mut self, conf: &Config) -> bool {
         if self.len() <= conf.maxlines {
             log_only(conf, "Nothing to clean");
-            return;
+            return false;
         };
 
         // Adjust all ratings down by 10%
@@ -190,6 +209,7 @@ impl AsdfBase {
             self.contents.remove(&f.0);
         }
         log_only(conf, &format!("{} records truncated", keys_truncated));
+        return true;
     }
 
     pub fn write_out(&self, conf: &Config) -> std::io::Result<()> {

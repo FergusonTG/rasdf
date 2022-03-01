@@ -35,14 +35,18 @@ Options:
 
         "clean" => {
             let mut dbase = rasdf::AsdfBase::from_file(&conf);
-            dbase.clean(&conf);
-            if let Err(e) = dbase.write_out(&conf) {
-                log(&conf, &format!("Failed to write data file: {}", e));
+            if dbase.clean(&conf) {
+                if let Err(e) = dbase.write_out(&conf) {
+                    log(&conf, &format!("Failed to write data file: {}", e));
+                } else {
+                    log_only(
+                        &conf,
+                        &format!("Database cleaned; {} rows written.", dbase.len()),
+                    );
+                }
             } else {
-                log_only(
-                    &conf,
-                    &format!("Database cleaned; {} rows written.", dbase.len()),
-                );
+                log_only(&conf, "Nothing to clean.");
+                return;
             }
         }
 

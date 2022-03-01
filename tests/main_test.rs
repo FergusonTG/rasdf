@@ -227,7 +227,7 @@ fn clean_dbase() {
                  /usr/bin/|1.2|1235566|\n";
     let mut dbase = AsdfBase::from_data(&conf, lines);
 
-    dbase.clean(&conf);
+    assert!(dbase.clean(&conf));
     assert!(dbase.len() <= conf.maxlines);
 }
 
