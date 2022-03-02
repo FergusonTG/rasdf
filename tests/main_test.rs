@@ -250,6 +250,7 @@ fn write_to_file() {
 
 fn make_config() -> config::Config<'static> {
     config::Config {
+        version: String::from("0.0.1.test"),
         executable: "test_harness".to_string(),
         command: String::new(),
         method: config::ScoreMethod::Frecency,

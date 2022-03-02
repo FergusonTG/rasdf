@@ -5,6 +5,8 @@ use std::env;
 use std::path::PathBuf;
 use std::time::SystemTime;
 
+const VERSION: &str = "0.1.1";
+
 #[derive(Copy, Clone, Debug)]
 pub enum ScoreMethod {
     Date,
@@ -24,6 +26,7 @@ impl ScoreMethod {
 }
 
 pub struct Config<'a> {
+    pub version: String,
     pub executable: String,
     pub command: String,
     pub method: ScoreMethod,
@@ -49,6 +52,7 @@ impl Default for Config<'_> {
 impl Config<'_> {
     pub fn new() -> Config<'static> {
         let mut config = Config {
+            version: String::from(VERSION),
             executable: String::new(),
             command: String::new(),
             method: if let Ok(s) = env::var("RASDF_METHOD") {
@@ -62,14 +66,9 @@ impl Config<'_> {
                 PathBuf::from("/home/tim/.config/rasdf/rasdf.dat")
             },
             tempfile: PathBuf::from("/tmp/rasdf_tf.dat"),
-            maxlines: {
-                let mut maxlines = 200usize;
-                if let Ok(stringval) = env::var("RASDF_MAXLINES") {
-                    if let Ok(intval) = stringval.parse::<usize>() {
-                        maxlines = intval;
-                    }
-                };
-                maxlines
+            maxlines: match env::var("RASDF_MAXLINES").map(|var| var.parse::<usize>()) {
+                Ok(Ok(maxlines)) => maxlines,
+                _ => 200,
             },
             logging: match env::var("RASDF_LOGFILE") {
                 Ok(filepath) => Some(PathBuf::from(filepath)),

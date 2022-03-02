@@ -5,13 +5,14 @@ fn main() {
 
     let usage = "
 Commands: 
-    help
     init
     clean
     add path [path...]
     remove path
     find segment [segment...]
     find-all segment [segment..]
+    help
+    version
 
 Options:
     -a, -d, -f     find all resources, directories, files
@@ -46,7 +47,6 @@ Options:
                 }
             } else {
                 log_only(&conf, "Nothing to clean.");
-                return;
             }
         }
 
@@ -99,6 +99,8 @@ Options:
         }
 
         "help" => println!("{} COMMAND [OPTIONS...]\n{}", conf.executable, usage),
+
+        "version" => println!("{} version {}", conf.executable, conf.version),
 
         &_ => {
             eprintln!(

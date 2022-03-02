@@ -13,13 +13,13 @@ pub mod logging;
 use logging::{log, log_only};
 
 /// AsdfBaseData
-/// 
+///
 /// Data for a single path
 /// fields:
 /// + rating: float, continually updated when cleaning file
 /// + date: u64, a UNIX-style datestamp of last access
 /// + flags: string, use to be determined
-/// 
+///
 #[derive(Debug)]
 pub struct AsdfBaseData {
     pub rating: f32,
@@ -46,10 +46,10 @@ impl AsdfBaseData {
 }
 
 /// AsdfBase
-/// 
+///
 /// Database of all the mappings
 /// path -> AsdfBaseData
-/// 
+///
 /// path is maintained as absolute canonical String
 ///
 pub struct AsdfBase {
@@ -88,12 +88,14 @@ impl AsdfBase {
 
     /// add or update a path record in the database
     pub fn add(&mut self, conf: &Config, path: &str, flags: &str) {
-        let pathstring = match canonical_string(path) {
-            Some(pathbuf) => match pathbuf.to_str() {
-                Some(pathstr) => pathstr.to_string(),
-                None => return,
-            },
-            None => return,
+        let pathstring = if let Some(checkpath) = canonical_string(path) // Option<PathBuf>
+            .map(|pb| pb.into_os_string()) // Option<OsString>
+            .and_then(|s| s.into_string().ok())
+        {
+            // Option<String>
+            checkpath
+        } else {
+            return;
         };
 
         if let Some(data) = self.contents.get_mut(&pathstring) {
@@ -138,12 +140,15 @@ impl AsdfBase {
             v.push("");
         }
         if v.len() == 4 {
-            let pathstring = match canonical_string(v[0]) {
-                Some(pathbuf) => match pathbuf.to_str() {
-                    Some(pathstr) => pathstr.to_string(),
-                    None => return self.contents.len(),
-                },
-                None => return self.contents.len(),
+            let pathstring = if let Some(checkpath) =
+                canonical_string(v[0]) // Option<PathBuf>
+                    .map(|pb| pb.into_os_string()) // Option<OsString>
+                    .and_then(|s| s.into_string().ok())
+            {
+                // Option<String>
+                checkpath
+            } else {
+                return self.contents.len();
             };
 
             if let (Ok(rating), Ok(date), flags) =
@@ -159,7 +164,7 @@ impl AsdfBase {
                 );
             };
         } else {
-            log(&conf, &format!("Can't parse row: {}", row));
+            log(conf, &format!("Can't parse row: {}", row));
         }
 
         self.contents.len()
@@ -209,7 +214,7 @@ impl AsdfBase {
             self.contents.remove(&f.0);
         }
         log_only(conf, &format!("{} records truncated", keys_truncated));
-        return true;
+        true
     }
 
     pub fn write_out(&self, conf: &Config) -> std::io::Result<()> {
@@ -226,10 +231,7 @@ impl AsdfBase {
 
         // and copy that back to proper place
         // println!("Copying to {:?}", &conf.datafile);
-        fs::rename(&path, &conf.datafile).or(match fs::copy(&path, &conf.datafile) {
-            Err(e) => Err(e),
-            Ok(_) => Ok(()),
-        })
+        fs::rename(&path, &conf.datafile).or_else(|_| fs::copy(&path, &conf.datafile).map(|_| ()))
     }
 
     pub fn find_list(&self, conf: &Config) -> Vec<(&str, f32)> {
@@ -278,11 +280,11 @@ impl AsdfBase {
 
         // Sort the results according to the score first then path
         result.sort_by(|a, b| {
-            let ord = a.1.partial_cmp(&b.1).unwrap();
-            match ord {
-                Ordering::Equal => a.0.cmp(b.0),
-                _ => ord,
+            let mut ord = a.1.partial_cmp(&b.1).unwrap();
+            if ord == Ordering::Equal {
+                ord = a.0.cmp(b.0);
             }
+            ord
         });
         result
     }
@@ -302,17 +304,12 @@ impl AsdfBase {
 }
 
 fn canonical_string(path: &str) -> Option<PathBuf> {
-    // return a String if path is a real path
+    // return a Some(String) if path is a real path
     // otherwise None
-    let pathstring = if path.starts_with('~') {
-        if let Some(homedir) = home_dir() {
-            path.replacen('~', &homedir, 1)
-        } else {
-            return None;
-        }
-    } else {
-        String::from(path)
-    };
+    let mut pathstring = String::from(path);
+    if pathstring.starts_with('~') {
+        pathstring = pathstring.replacen('~', &home_dir()?, 1)
+    }
 
     fs::canonicalize(&pathstring).ok()
 }
