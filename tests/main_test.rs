@@ -6,7 +6,7 @@ use rasdf::*;
 #[test]
 fn add_two_rows() {
     let conf = make_config();
-    let mut dbase = AsdfBase::new();
+    let mut dbase = RasdfBase::new();
     let row_one = "/home/tim/tmp|4.5|1234567|x";
     let row_two = "/home/tim/Documents|6.7|1237890";
     let row_three = "";
@@ -21,7 +21,7 @@ fn add_two_rows() {
 #[test]
 fn add_broken_row() {
     let conf = make_config();
-    let mut dbase = AsdfBase::new();
+    let mut dbase = RasdfBase::new();
     let row_one = "/home/tim/tmp|4.5|1234567|x|";
     dbase.add_line(&conf, row_one);
     assert!(dbase.is_empty());
@@ -34,7 +34,7 @@ fn read_str_of_lines() {
                  /home/tim/Documents/|6.7|1237890|a\n\
                  /home/tim/Downloads|3.4|1236543|\n\
                  /usr/bin/|1.2|1235566|\n";
-    let dbase = AsdfBase::from_data(&conf, lines);
+    let dbase = RasdfBase::from_data(&conf, lines);
     assert_eq!(4, dbase.len());
 }
 
@@ -43,7 +43,7 @@ fn read_data_file_successful() {
     let mut conf = make_config();
     conf.datafile = PathBuf::from("./asdf.dat");
 
-    let dbase = AsdfBase::from_file(&conf);
+    let dbase = RasdfBase::from_file(&conf);
     assert!(!dbase.is_empty());
 }
 
@@ -52,20 +52,19 @@ fn read_data_file_unsuccessful() {
     let mut conf = make_config();
     conf.datafile = PathBuf::from("./missing.file");
 
-    let dbase = AsdfBase::from_file(&conf);
+    let dbase = RasdfBase::from_file(&conf);
     assert!(dbase.is_empty());
 }
 
 #[test]
 fn find_rows() {
-    let conf = make_config();
-    let mut dbase = AsdfBase::new();
+    let mut conf = make_config();
+    conf.arguments = vec![String::from("tim"), String::from("m")];
+
+    let mut dbase = RasdfBase::new();
     dbase.add_line(&conf, "/home/tim/tmp|4.5|1234567|x");
     dbase.add_line(&conf, "/home/tim/Documents|6.7|1237890");
     dbase.add_line(&conf, "/home/tim/Documents/2019|6.7|1237890");
-
-    let mut conf = make_config();
-    conf.arguments = vec![String::from("tim"), String::from("m")];
     assert_eq!(2, dbase.find_list(&conf).len());
 
     conf.method = config::ScoreMethod::Date;
@@ -76,13 +75,13 @@ fn find_rows() {
 #[test]
 fn find_row() {
     let mut conf = make_config();
-    let mut dbase = AsdfBase::new();
+    let mut dbase = RasdfBase::new();
     dbase.add_line(&conf, "/home/tim/tmp|9.5|1234567|x");
     dbase.add_line(&conf, "/home/tim/Documents|9.7|1237890");
     dbase.add_line(&conf, "/home/tim/Private/tmp|4.7|1236654");
 
     conf.arguments = vec![String::from("tim"), String::from("tmp")];
-    // refactor AsdfBase::find to return an Option<&str>
+    // refactor RasdfBase::find to return an Option<&str>
     assert_eq!(Some("/home/tim/tmp"), dbase.find(&conf));
 
     conf.arguments.push(String::from("missing"));
@@ -96,7 +95,7 @@ fn read_dirs_only() {
                  /home/tim/tmp/one.file|6.5|1237890|f\n\
                  /home/tim/tmp/two.file|5.5|1237890|a\n\
                  /home/tim/tmp/three.file|5.5|1237890|a";
-    let dbase = AsdfBase::from_data(&conf, lines);
+    let dbase = RasdfBase::from_data(&conf, lines);
     assert_eq!(4, dbase.len());
 
     conf.find_dirs = true;
@@ -116,7 +115,7 @@ fn read_files_only() {
                  /home/tim/tmp/one.file|6.5|1237890|f\n\
                  /home/tim/tmp/two.file|5.5|1237890|a\n\
                  /home/tim/tmp/three.file|5.5|1237890|a";
-    let dbase = AsdfBase::from_data(&conf, lines);
+    let dbase = RasdfBase::from_data(&conf, lines);
     assert_eq!(4, dbase.len());
 
     conf.find_dirs = false;
@@ -134,7 +133,7 @@ fn read_case_sensitive() {
                  /home/tim/tmp/one.file|6.5|1237890|f\n\
                  /home/tim/tmp/two.file|5.5|1237890|a\n\
                  /home/tim/tmp/three.file|5.5|1237890|a";
-    let dbase = AsdfBase::from_data(&conf, lines);
+    let dbase = RasdfBase::from_data(&conf, lines);
     assert_eq!(4, dbase.len());
 
     conf.find_dirs = false;
@@ -157,14 +156,12 @@ fn add_new_data() {
     conf.datafile = PathBuf::from("./asdf.dat");
     conf.arguments.push(
         PathBuf::from("./")
-            .canonicalize()
-            .unwrap()
-            .to_str()
-            .unwrap()
+            .canonicalize().unwrap()
+            .to_str().unwrap()
             .to_string(),
     );
 
-    let mut dbase = AsdfBase::from_file(&conf);
+    let mut dbase = RasdfBase::from_file(&conf);
     dbase.remove(&conf);
 
     let original_length = dbase.len();
@@ -174,7 +171,7 @@ fn add_new_data() {
 
 #[test]
 fn check_entry() {
-    let mut dbase = AsdfBase::new();
+    let mut dbase = RasdfBase::new();
     let conf = make_config();
 
     let tdir = "/home/tim/tmp";
@@ -194,7 +191,7 @@ fn check_entry() {
 fn check_scoring() {
     let conf = make_config();
 
-    let dbase = AsdfBase::from_data(
+    let dbase = RasdfBase::from_data(
         &conf,
         format!("/home/tim/tmp|1.5|{}|x\n", conf.current_time).as_str(),
     );
@@ -209,7 +206,7 @@ fn check_missing_entry() {
                  /home/tim/Documents/|6.7|1237890|a\n\
                  /home/tim/mydiary|3.4|1236543|\n\
                  /root/src/|1.2|1235566|\n";
-    let dbase = AsdfBase::from_data(&conf, lines);
+    let dbase = RasdfBase::from_data(&conf, lines);
     assert!(dbase.entry("no/such/path").is_none());
 }
 
@@ -225,7 +222,7 @@ fn clean_dbase() {
                  /home/tim/Documents/|6.7|1237890|a\n\
                  /home/tim/mydiary|3.4|1236543|\n\
                  /usr/bin/|1.2|1235566|\n";
-    let mut dbase = AsdfBase::from_data(&conf, lines);
+    let mut dbase = RasdfBase::from_data(&conf, lines);
 
     assert!(dbase.clean(&conf));
     assert!(dbase.len() <= conf.maxlines);
@@ -240,7 +237,7 @@ fn write_to_file() {
                  /home/tim/Documents/|6.7|1237890|a\n\
                  /home/tim/mydiary|3.4|1236543|\n\
                  /root/src/|1.2|1235566|\n";
-    let dbase = AsdfBase::from_data(&conf, lines);
+    let dbase = RasdfBase::from_data(&conf, lines);
 
     assert!(dbase.write_out(&conf).is_ok());
 

@@ -12,7 +12,7 @@ use config::{home_dir, Config, ScoreMethod};
 pub mod logging;
 use logging::{log, log_only};
 
-/// AsdfBaseData
+/// RasdfBaseData
 ///
 /// Data for a single path
 /// fields:
@@ -21,13 +21,13 @@ use logging::{log, log_only};
 /// + flags: string, use to be determined
 ///
 #[derive(Debug)]
-pub struct AsdfBaseData {
+pub struct RasdfBaseData {
     pub rating: f32,
     pub date: u64,
     pub flags: String,
 }
 
-impl AsdfBaseData {
+impl RasdfBaseData {
     pub fn score(&self, conf: &Config) -> f32 {
         match conf.method {
             ScoreMethod::Date => self.date as f32,
@@ -45,32 +45,32 @@ impl AsdfBaseData {
     }
 }
 
-/// AsdfBase
+/// RasdfBase
 ///
 /// Database of all the mappings
-/// path -> AsdfBaseData
+/// path -> RasdfBaseData
 ///
 /// path is maintained as absolute canonical String
 ///
-pub struct AsdfBase {
-    contents: HashMap<String, AsdfBaseData>,
+pub struct RasdfBase {
+    contents: HashMap<String, RasdfBaseData>,
 }
 
-impl AsdfBase {
-    pub fn new() -> AsdfBase {
-        AsdfBase {
+impl RasdfBase {
+    pub fn new() -> RasdfBase {
+        RasdfBase {
             contents: HashMap::new(),
         }
     }
 }
 
-impl Default for AsdfBase {
-    fn default() -> AsdfBase {
-        AsdfBase::new()
+impl Default for RasdfBase {
+    fn default() -> RasdfBase {
+        RasdfBase::new()
     }
 }
 
-impl AsdfBase {
+impl RasdfBase {
     /// number of records in database
     pub fn len(&self) -> usize {
         self.contents.len()
@@ -82,7 +82,7 @@ impl AsdfBase {
     }
 
     /// return basedata for given path, or None
-    pub fn entry(&self, path: &str) -> Option<&AsdfBaseData> {
+    pub fn entry(&self, path: &str) -> Option<&RasdfBaseData> {
         self.contents.get(path)
     }
 
@@ -111,7 +111,7 @@ impl AsdfBase {
             log_only(conf, &format!("Adding new path: {}", pathstring));
             self.contents.insert(
                 pathstring,
-                AsdfBaseData {
+                RasdfBaseData {
                     rating: 1.0,
                     date: conf.current_time,
                     flags: String::from(flags),
@@ -156,7 +156,7 @@ impl AsdfBase {
             {
                 self.contents.insert(
                     pathstring,
-                    AsdfBaseData {
+                    RasdfBaseData {
                         rating,
                         date,
                         flags,
@@ -170,20 +170,20 @@ impl AsdfBase {
         self.contents.len()
     }
 
-    pub fn from_data(conf: &Config, lines: &str) -> AsdfBase {
-        let mut dbase = AsdfBase::new();
+    pub fn from_data(conf: &Config, lines: &str) -> RasdfBase {
+        let mut dbase = RasdfBase::new();
         for line in lines.split('\n') {
             dbase.add_line(conf, line);
         }
         dbase
     }
 
-    pub fn from_file(conf: &Config) -> AsdfBase {
+    pub fn from_file(conf: &Config) -> RasdfBase {
         if let Ok(contents) = fs::read_to_string(&conf.datafile) {
             // eprintln!("{}", &contents);
-            AsdfBase::from_data(conf, &contents)
+            RasdfBase::from_data(conf, &contents)
         } else {
-            AsdfBase::new()
+            RasdfBase::new()
         }
     }
 
