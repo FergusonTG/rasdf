@@ -16,4 +16,5 @@ Cargo.lock
 # Generated for or by testing, not needed in repo
 testme.sh
 test_output.dat
+test-log.log
 rasdf.log

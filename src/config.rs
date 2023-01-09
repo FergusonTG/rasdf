@@ -40,6 +40,8 @@ pub struct Config<'a> {
     pub strict: bool,
     pub case_sensitive: bool,
     pub cmd_blacklist: Vec<&'a str>,
+    pub entry_flags_add: Vec<char>,
+    pub entry_flags_remove: Vec<char>,
     pub arguments: Vec<String>,
 }
 
@@ -86,6 +88,8 @@ impl Config<'_> {
                 "rasdf", "ls", "dir", "vdir", "ddir", "cd", "rm", "rmdir", "tree",
             ]
             .to_vec(),
+            entry_flags_add: vec![],
+            entry_flags_remove: vec![],
             arguments: vec![],
         };
 
@@ -104,13 +108,18 @@ impl Config<'_> {
         config.command = argiter.next().unwrap_or_default();
 
         while let Some(arg) = argiter.peek() {
-            if !arg.starts_with('-') {
-                break;
-            }
-            for flag in arg.chars().skip(1) {
-                config.set_flag(flag);
-            }
+            if arg.starts_with('-') {
+                for flag in arg.chars().skip(1) {
+                    config.set_flag(flag);
+                }
 
+            } else if arg.starts_with('+') {
+                config.entry_flags_add = arg.chars().skip(1).collect();
+
+            } else {
+                break;
+
+            }
             argiter.next();
         }
 
@@ -143,7 +152,8 @@ impl Config<'_> {
             'c' => self.case_sensitive = true,
             'i' => self.case_sensitive = false,
 
-            _ => panic!("Unrecognised option {}", flag),
+            // anything else is an entry_flag to remove
+            _ => self.entry_flags_remove.push(flag),
         };
     }
 }

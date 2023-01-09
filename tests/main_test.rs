@@ -257,7 +257,7 @@ fn make_config() -> config::Config<'static> {
         datafile: PathBuf::from(".asdf.dat"),
         tempfile: PathBuf::from("/tmp"),
         maxlines: 200usize,
-        logging: None,
+        logging: Some(PathBuf::from("./test-log.log")),
         current_time: SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
@@ -267,6 +267,8 @@ fn make_config() -> config::Config<'static> {
         strict: true,
         case_sensitive: false,
         cmd_blacklist: Vec::new(),
+        entry_flags_add: Vec::new(),
+        entry_flags_remove: Vec::new(),
         arguments: Vec::new(),
     }
 }
