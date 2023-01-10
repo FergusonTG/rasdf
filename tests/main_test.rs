@@ -165,17 +165,18 @@ fn add_new_data() {
     dbase.remove(&conf);
 
     let original_length = dbase.len();
-    dbase.add(&conf, "./", "");
+    dbase.add(&conf, "./");
     assert_ne!(original_length, dbase.len());
 }
 
 #[test]
 fn check_entry() {
     let mut dbase = RasdfBase::new();
-    let conf = make_config();
+    let mut conf = make_config();
+    conf.entry_flags_add.push('+');
 
     let tdir = "/home/tim/tmp";
-    dbase.add(&conf, tdir, "+");
+    dbase.add(&conf, tdir);
 
     assert!(dbase.entry(tdir).is_some());
 
@@ -183,7 +184,8 @@ fn check_entry() {
     assert_eq!("+", dbase.entry(tdir).unwrap().flags);
 
     // check that add is not overriding existing flag
-    dbase.add(&conf, tdir, "");
+    conf.entry_flags_add.clear();
+    dbase.add(&conf, tdir);
     assert_eq!("+", dbase.entry(tdir).unwrap().flags);
 }
 

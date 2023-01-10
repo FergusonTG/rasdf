@@ -87,7 +87,7 @@ impl RasdfBase {
     }
 
     /// add or update a path record in the database
-    pub fn add(&mut self, conf: &Config, path: &str, flags: &str) {
+    pub fn add(&mut self, conf: &Config, path: &str) {
         let pathstring = if let Some(checkpath) = canonical_string(path) // Option<PathBuf>
             .map(|pb| pb.into_os_string()) // Option<OsString>
             .and_then(|s| s.into_string().ok())
@@ -102,19 +102,21 @@ impl RasdfBase {
             log_only(conf, &format!("Uprating path: {}", pathstring));
             data.rating += 1.0 / data.rating;
             data.date = conf.current_time;
-            for c in flags.chars() {
-                if !data.flags.contains(c) {
-                    data.flags.push(c);
-                }
+            if ! &conf.entry_flags_add.is_empty() || ! conf.entry_flags_remove.is_empty() {
+                let mut flags: Vec<char> = data.flags.chars().collect();
+                vec_insert(&mut flags, &conf.entry_flags_add, &conf.entry_flags_remove);
+                data.flags = flags.iter().collect();
             }
         } else {
             log_only(conf, &format!("Adding new path: {}", pathstring));
+            let mut flags = Vec::<char>::new();
+            vec_insert(&mut flags, &conf.entry_flags_add, &conf.entry_flags_remove);
             self.contents.insert(
                 pathstring,
                 RasdfBaseData {
                     rating: 1.0,
                     date: conf.current_time,
-                    flags: String::from(flags),
+                    flags: flags.iter().collect(),
                 },
             );
         }
@@ -302,6 +304,18 @@ impl RasdfBase {
         ret.0
     }
 }
+
+/// For vector v, add elements in a and remove elements in r
+/// Note that elements are added before they are removed.
+fn vec_insert<T: std::cmp::PartialEq + Copy>(v: &mut Vec<T>, a: &[T], r: &[T]) {
+    a.iter().for_each(|c| {
+        if !v.contains(c) {
+            v.push(*c);
+        }
+    });
+    v.retain(|c| !r.contains(c));
+}
+
 
 fn canonical_string(path: &str) -> Option<PathBuf> {
     // return a Some(String) if path is a real path
