@@ -9,6 +9,8 @@ z() {
   newdir=$( rasdf find -dsi $@ )
   if [ -n "$newdir" ]; then 
     cd "$newdir"
+  else
+    return 2
   fi 
 }
 
