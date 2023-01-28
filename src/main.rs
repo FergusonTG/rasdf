@@ -55,13 +55,12 @@ Options:
 
             // check that all arguments are not blacklisted
             for arg in &conf.arguments {
-                for &cmd in &conf.cmd_blacklist {
-                    if arg == cmd {
+                if conf.cmd_blacklist.iter().find(|&x| x == arg).is_some() {
                         log_only(&conf, &format!("Blacklisted command <{}>", arg));
                         return;
                     }
-                }
             }
+
             for arg in &conf.arguments {
                 dbase.add(&conf, arg, "");
             }
