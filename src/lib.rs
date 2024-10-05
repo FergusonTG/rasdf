@@ -237,29 +237,34 @@ impl AsdfBase {
     pub fn find_list(&self, conf: &Config) -> Vec<(&str, f32)> {
         let mut v = Vec::<&str>::new();
 
+        // we want elements to look for either raw or lower-cased
         let elements: Vec<String> = match conf.case_sensitive {
             true => conf.arguments.clone(),
             false => conf.arguments.iter().map(|s| s.to_lowercase()).collect(),
         };
 
+        // loop through all the paths in the data file
         'paths: for path in self.contents.keys() {
-            // make a mutable copy to turn into lowercase.
-            let mut pathstring = path.to_string();
-
             // check if we're looking for dirs or folders (or both)
             let p = PathBuf::from(&path);
             if (!conf.find_dirs && p.is_dir()) || (!conf.find_files && p.is_file()) {
                 continue 'paths;
             }
 
+            // make a mutable copy to turn into lowercase.
+            let mut pathstring = path.to_string();
+            // and an index to move along it
+            let mut start = 0usize;
+
             // if case insensitive, convert everything to lowercase
             if !conf.case_sensitive {
                 pathstring = pathstring.to_lowercase();
             };
 
-            let mut start = 0usize;
-
+            // for each element provided by the user
             for element in elements.iter() {
+
+                // look through the pathstring and find it
                 if let Some(p) = pathstring[start..].find(element) {
                     start += p + element.len();
                 } else {
@@ -267,8 +272,16 @@ impl AsdfBase {
                 }
             }
             // only add the path if the last element was in the last segment.
-            if !conf.strict || pathstring[start..].find(MAIN_SEPARATOR).is_none() {
+            if !conf.strict {
                 v.push(path);
+
+            } else {
+                // check out the last element, elements cannot be empty vec?
+                let last_element = elements.last().unwrap();
+                let last_segment_start = pathstring.rfind(MAIN_SEPARATOR).unwrap_or(0);
+                if pathstring[last_segment_start..].find(last_element).is_some() {
+                    v.push(path);
+                }
             }
         }
         // collect each path into a (path , score) tuple
