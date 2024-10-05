@@ -55,10 +55,11 @@ Options:
 
             // check that all arguments are not blacklisted
             for arg in &conf.arguments {
-                if conf.cmd_blacklist.iter().find(|&x| x == arg).is_some() {
-                        log_only(&conf, &format!("Blacklisted command <{}>", arg));
-                        return;
-                    }
+                if conf.cmd_blacklist.iter().any(|&x| x == arg) {
+                    // if conf.cmd_blacklist.iter().find(|&x| x == arg).is_some() {
+                    log_only(&conf, &format!("Blacklisted command <{}>", arg));
+                    return;
+                }
             }
 
             for arg in &conf.arguments {
@@ -99,7 +100,12 @@ Options:
 
         "help" => println!("{} COMMAND [OPTIONS...]\n{}", conf.executable, usage),
 
-        "version" => println!("{} version {}", conf.executable, conf.version),
+        "version" => println!(
+            "{} version {}\nData file: {}",
+            conf.executable,
+            conf.version,
+            conf.datafile.display()
+        ),
 
         &_ => {
             eprintln!(

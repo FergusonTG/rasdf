@@ -5,7 +5,7 @@ use std::env;
 use std::path::PathBuf;
 use std::time::SystemTime;
 
-const VERSION: &str = "0.1.1";
+const VERSION: &str = "0.1.2";
 
 #[derive(Copy, Clone, Debug)]
 pub enum ScoreMethod {
