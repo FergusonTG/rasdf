@@ -129,6 +129,7 @@ impl AsdfBase {
         }
     }
 
+    // add one row given as a string to self.contents; return new length of contents
     pub fn add_line(&mut self, conf: &Config, row: &str) -> usize {
         // ignore a blank line
         if row.is_empty() {
@@ -136,36 +137,41 @@ impl AsdfBase {
         }
 
         let mut v: Vec<&str> = row.split('|').collect();
+        // if there are only three elements, add empty one at the end
         if v.len() == 3 {
             v.push("");
         }
-        if v.len() == 4 {
-            let pathstring = if let Some(checkpath) =
-                canonical_string(v[0]) // Option<PathBuf>
-                    .map(|pb| pb.into_os_string()) // Option<OsString>
-                    .and_then(|s| s.into_string().ok())
-            {
-                // Option<String>
-                checkpath
-            } else {
-                return self.contents.len();
-            };
-
-            if let (Ok(rating), Ok(date), flags) =
-                (v[1].parse::<f32>(), v[2].parse::<u64>(), v[3].to_string())
-            {
-                self.contents.insert(
-                    pathstring,
-                    AsdfBaseData {
-                        rating,
-                        date,
-                        flags,
-                    },
-                );
-            };
-        } else {
+        if v.len() != 4 {
+            // not legal line
             log(conf, &format!("Can't parse row: {}", row));
+            return self.contents.len();
         }
+
+        // get a valid path string from v[0]
+        let Some(pathstring) = canonical_string(v[0])      // Option<PathBuf>
+                .map(|pb| pb.into_os_string())             // Option<OsString>
+                .and_then(|s| s.into_string().ok())        // Option<String>
+        else {
+            log_only(conf, &format!("Cannot parse path: {}", v[0]));
+            return self.contents.len();
+        };
+
+        // check the other three fields
+        let (Ok(rating), Ok(date), flags) =
+            (v[1].parse::<f32>(), v[2].parse::<u64>(), v[3].to_string()) else
+        {
+            log_only(conf, &format!("Problem with fields: {}", row));
+            return self.contents.len();
+        };
+
+        // all okay, insert the row.
+        self.contents.insert(
+            pathstring,
+            AsdfBaseData {
+                rating,
+                date,
+                flags,
+            });
 
         self.contents.len()
     }
