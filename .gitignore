@@ -14,5 +14,5 @@ Cargo.lock
 *.pdb
 
 # Generated for or by testing, not needed in repo
-test*
 rasdf.log
+test_output.dat
