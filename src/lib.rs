@@ -158,8 +158,8 @@ impl AsdfBase {
 
         // check the other three fields
         let (Ok(rating), Ok(date), flags) =
-            (v[1].parse::<f32>(), v[2].parse::<u64>(), v[3].to_string()) else
-        {
+            (v[1].parse::<f32>(), v[2].parse::<u64>(), v[3].to_string())
+        else {
             log_only(conf, &format!("Problem with fields: {}", row));
             return self.contents.len();
         };
