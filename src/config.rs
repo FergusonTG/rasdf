@@ -39,6 +39,7 @@ pub struct Config<'a> {
     pub find_files: bool,
     pub strict: bool,
     pub case_sensitive: bool,
+    pub flags: String,
     pub cmd_blacklist: Vec<&'a str>,
     pub arguments: Vec<String>,
 }
@@ -82,17 +83,17 @@ impl Config<'_> {
             find_files: false,
             strict: true,
             case_sensitive: true,
+            flags: String::new(),
             cmd_blacklist: [
                 "rasdf", "ls", "dir", "vdir", "ddir", "cd", "rm", "rmdir", "tree",
-            ]
-            .to_vec(),
+            ].to_vec(),
             arguments: vec![],
         };
 
         // override from $RASDF_FLAGS
-        if let Ok(flags) = env::var("RASDF_FLAGS") {
-            for flag in flags.chars() {
-                config.set_flag(flag);
+        if let Ok(cli_flags) = env::var("RASDF_FLAGS") {
+            for cli_flag in cli_flags.chars() {
+                config.set_cli_flag(cli_flag);
             }
         }
 
@@ -107,8 +108,8 @@ impl Config<'_> {
             if !arg.starts_with('-') {
                 break;
             }
-            for flag in arg.chars().skip(1) {
-                config.set_flag(flag);
+            for cli_flag in arg.chars().skip(1) {
+                config.set_cli_flag(cli_flag);
             }
 
             argiter.next();
@@ -121,8 +122,8 @@ impl Config<'_> {
         config
     }
 
-    fn set_flag(&mut self, flag: char) {
-        match flag {
+    fn set_cli_flag(&mut self, cli_flag: char) {
+        match cli_flag {
             'a' => {
                 self.find_dirs = true;
                 self.find_files = true;
@@ -143,7 +144,7 @@ impl Config<'_> {
             'c' => self.case_sensitive = true,
             'i' => self.case_sensitive = false,
 
-            _ => panic!("Unrecognised option {}", flag),
+            _ => panic!("Unrecognised option {}", cli_flag),
         };
     }
 }

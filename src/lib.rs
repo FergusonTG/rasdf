@@ -12,6 +12,8 @@ use config::{home_dir, Config, ScoreMethod};
 pub mod logging;
 use logging::{log, log_only};
 
+// TODO: Replace AsdfBase with RasdfBase throughout code base...
+
 /// AsdfBaseData
 ///
 /// Data for a single path
@@ -28,18 +30,44 @@ pub struct AsdfBaseData {
 }
 
 impl AsdfBaseData {
+    pub fn new(conf: &Config,
+        opt_rating: Option<f32>,
+        opt_date: Option<u64>,
+        flags: &str ) -> AsdfBaseData {
+        AsdfBaseData {
+            rating: opt_rating.unwrap_or(1.0),
+            date: opt_date.unwrap_or(conf.current_time),
+            flags: flags.to_string(),
+        }
+    }
+
+    pub fn update_with(&mut self, other: &AsdfBaseData) {
+        self.rating += other.rating / self.rating;
+        self.date = std::cmp::max(self.date, other.date);
+        self.flags = {
+            let mut set: Vec<char> = Vec::new();
+            for ch in self.flags.chars() {
+                if !set.iter().any(|&c| c == ch) { set.push(ch) };
+            }
+            for ch in other.flags.chars() {
+                if !set.iter().any(|&c| c == ch) { set.push(ch) };
+            }
+            set.iter().collect()
+        };
+    }
+
     pub fn score(&self, conf: &Config) -> f32 {
         match conf.method {
             ScoreMethod::Date => self.date as f32,
             ScoreMethod::Rating => self.rating,
             ScoreMethod::Frecency => {
-                self.rating
-                    * match conf.current_time - self.date {
-                        0..=3600 => 6.0,
-                        3601..=86400 => 4.0,
-                        86401..=604800 => 2.0,
-                        _ => 1.0,
-                    }
+                let scale: f32 = match conf.current_time - self.date {
+                        0..=3600 => 6.0,        // less than an hour
+                        3601..=86400 => 4.0,    // up to one day
+                        86401..=604800 => 2.0,  // up to seven days
+                        _ => 1.0,               // otherwise...
+                    };
+                scale * self.rating
             }
         }
     }
@@ -87,36 +115,24 @@ impl AsdfBase {
     }
 
     /// add or update a path record in the database
-    pub fn add(&mut self, conf: &Config, path: &str, flags: &str) {
-        let pathstring = if let Some(checkpath) = canonical_string(path) // Option<PathBuf>
-            .map(|pb| pb.into_os_string()) // Option<OsString>
-            .and_then(|s| s.into_string().ok())
-        {
-            // Option<String>
-            checkpath
-        } else {
+    pub fn add_path(&mut self, conf: &Config, path: &str) {
+        let Some(pathstring) = canonical_string(path)     // Option<PathBuf>
+            .map(|pb| pb.into_os_string())               // Option<OsString>
+            .and_then(|s| s.into_string().ok())          // Option<String>
+        else {
             return;
         };
 
+        // check if pathstring already exists:
         if let Some(data) = self.contents.get_mut(&pathstring) {
+            // it's there, increment the rating.
             log_only(conf, &format!("Uprating path: {}", pathstring));
-            data.rating += 1.0 / data.rating;
-            data.date = conf.current_time;
-            for c in flags.chars() {
-                if !data.flags.contains(c) {
-                    data.flags.push(c);
-                }
-            }
+            data.update_with(&AsdfBaseData::new(&conf, Some(1.0), None, ""));
         } else {
+            // new path, add it to the database
             log_only(conf, &format!("Adding new path: {}", pathstring));
-            self.contents.insert(
-                pathstring,
-                AsdfBaseData {
-                    rating: 1.0,
-                    date: conf.current_time,
-                    flags: String::from(flags),
-                },
-            );
+            self.contents.insert(pathstring,
+                AsdfBaseData::new(&conf, Some(1.0), None, ""));
         }
     }
 
@@ -331,4 +347,15 @@ fn canonical_string(path: &str) -> Option<PathBuf> {
     }
 
     fs::canonicalize(&pathstring).ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_canonical_string() {
+        assert!( canonical_string("/home/tim/tmp").is_some());
+        assert!( canonical_string("/home/user/tmp").is_none());
+    }
 }
