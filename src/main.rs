@@ -63,7 +63,7 @@ Options:
             }
 
             for arg in &conf.arguments {
-                dbase.add(&conf, arg, "");
+                dbase.add_path(&conf, arg);
             }
 
             if let Err(e) = dbase.write_out(&conf) {
