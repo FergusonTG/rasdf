@@ -68,20 +68,48 @@ fn test_basedata_update() {
 fn test_add_from_string() {
     let conf = make_config();
 
-    let mut dbase = AsdfBase::new();
-    dbase.add_line(&conf, "/home/tim/tmp|2.2|123456|t");
-    assert!( dbase.len() == 1 );
-}
-
-#[test]
-fn test_new_from_string() {
-    let conf = make_config();
-
+    // Add two paths from a multi-line string
     let mut dbase = AsdfBase::from_data(&conf, 
         "/home/tim/tmp|2.2|123456|td\n/home/tim/|1.9|123457|td"
     );
     assert!( dbase.len() == 2 );
     
+    // Add one new path with add_line
+    dbase.add_line(&conf, "/home/tim/tmp/tmp-one.file|2.2|123456|t");
+    assert!( dbase.len() == 3 );
+
+    // Add one repeated path, should be rejected.
     dbase.add_line(&conf, "/home/tim/tmp|2.2|123456|t");
-    assert!( dbase.len() == 2 );
+    assert!( dbase.len() == 3 );
 }
+
+#[test]
+fn test_add_path() {
+    let conf = make_config();
+
+    let mut dbase = AsdfBase::new();
+    dbase.add_path(&conf, "temp/my-temp-file");
+    assert_eq!( dbase.len(), 1 );
+}
+
+// Check repeat bug!
+#[test]
+fn test_repeated_segment() {
+    // `find -f -s tim` does not find /../tim/tim.file
+    // because strict finds the folder name and does not look at
+    // the final setment
+    let mut conf = make_config();
+    conf.strict = true;
+    conf.find_files = true;
+    conf.find_dirs = false;
+    conf.arguments = ["temp".to_string()].to_vec();
+
+    let mut dbase = AsdfBase::new();
+    dbase.add_path(&conf, "temp/my-temp-file");
+    assert_eq!( dbase.len(), 1 );
+
+    let found = dbase.find_list(&conf); 
+    assert_eq!( found.len(), 1)
+}
+
+

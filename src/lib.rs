@@ -47,10 +47,10 @@ impl AsdfBaseData {
         self.flags = {
             let mut set: Vec<char> = Vec::new();
             for ch in self.flags.chars() {
-                if !set.iter().any(|&c| c == ch) { set.push(ch) };
+                if !set.contains(&ch) { set.push(ch) };
             }
             for ch in other.flags.chars() {
-                if !set.iter().any(|&c| c == ch) { set.push(ch) };
+                if !set.contains(&ch) { set.push(ch) };
             }
             set.iter().collect()
         };
