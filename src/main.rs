@@ -26,7 +26,7 @@ Options:
 
     match conf.command.as_str() {
         "init" => {
-            let dbase = rasdf::AsdfBase::new();
+            let dbase = rasdf::RasdfBase::new();
             if let Err(e) = dbase.write_out(&conf) {
                 log(&conf, &format!("Failed to write data file: {}", e));
             } else {
@@ -35,7 +35,7 @@ Options:
         }
 
         "clean" => {
-            let mut dbase = rasdf::AsdfBase::from_file(&conf);
+            let mut dbase = rasdf::RasdfBase::from_file(&conf);
             if dbase.clean(&conf) {
                 if let Err(e) = dbase.write_out(&conf) {
                     log(&conf, &format!("Failed to write data file: {}", e));
@@ -51,7 +51,7 @@ Options:
         }
 
         "add" => {
-            let mut dbase = rasdf::AsdfBase::from_file(&conf);
+            let mut dbase = rasdf::RasdfBase::from_file(&conf);
 
             // check that all arguments are not blacklisted
             for arg in &conf.arguments {
@@ -72,7 +72,7 @@ Options:
         }
 
         "remove" => {
-            let mut dbase = rasdf::AsdfBase::from_file(&conf);
+            let mut dbase = rasdf::RasdfBase::from_file(&conf);
             dbase.remove(&conf);
             if let Err(e) = dbase.write_out(&conf) {
                 log(&conf, &format!("Failed to write data file: {}", e));
@@ -80,7 +80,7 @@ Options:
         }
 
         "find-all" => {
-            let dbase = rasdf::AsdfBase::from_file(&conf);
+            let dbase = rasdf::RasdfBase::from_file(&conf);
             // eprintln!("Read {} lines.", dbase.len());
 
             let rets = dbase.find_list(&conf);
@@ -90,7 +90,7 @@ Options:
         }
 
         "find" => {
-            let dbase = rasdf::AsdfBase::from_file(&conf);
+            let dbase = rasdf::RasdfBase::from_file(&conf);
             // eprintln!("Read {} lines.", dbase.len());
 
             if let Some(ret) = dbase.find(&conf) {

@@ -12,9 +12,9 @@ use config::{home_dir, Config, ScoreMethod};
 pub mod logging;
 use logging::{log, log_only};
 
-// TODO: Replace AsdfBase with RasdfBase throughout code base...
+// TODO: Replace RasdfBase with RasdfBase throughout code base...
 
-/// AsdfBaseData
+/// RasdfBaseData
 ///
 /// Data for a single path
 /// fields:
@@ -23,25 +23,25 @@ use logging::{log, log_only};
 /// + flags: string, use to be determined
 ///
 #[derive(Debug)]
-pub struct AsdfBaseData {
+pub struct RasdfBaseData {
     pub rating: f32,
     pub date: u64,
     pub flags: String,
 }
 
-impl AsdfBaseData {
+impl RasdfBaseData {
     pub fn new(conf: &Config,
         opt_rating: Option<f32>,
         opt_date: Option<u64>,
-        flags: &str ) -> AsdfBaseData {
-        AsdfBaseData {
+        flags: &str ) -> RasdfBaseData {
+        RasdfBaseData {
             rating: opt_rating.unwrap_or(1.0),
             date: opt_date.unwrap_or(conf.current_time),
             flags: flags.to_string(),
         }
     }
 
-    pub fn update_with(&mut self, other: &AsdfBaseData) {
+    pub fn update_with(&mut self, other: &RasdfBaseData) {
         self.rating += other.rating / self.rating;
         self.date = std::cmp::max(self.date, other.date);
         self.flags = {
@@ -73,32 +73,32 @@ impl AsdfBaseData {
     }
 }
 
-/// AsdfBase
+/// RasdfBase
 ///
 /// Database of all the mappings
-/// path -> AsdfBaseData
+/// path -> RasdfBaseData
 ///
 /// path is maintained as absolute canonical String
 ///
-pub struct AsdfBase {
-    contents: HashMap<String, AsdfBaseData>,
+pub struct RasdfBase {
+    contents: HashMap<String, RasdfBaseData>,
 }
 
-impl AsdfBase {
-    pub fn new() -> AsdfBase {
-        AsdfBase {
+impl RasdfBase {
+    pub fn new() -> RasdfBase {
+        RasdfBase {
             contents: HashMap::new(),
         }
     }
 }
 
-impl Default for AsdfBase {
-    fn default() -> AsdfBase {
-        AsdfBase::new()
+impl Default for RasdfBase {
+    fn default() -> RasdfBase {
+        RasdfBase::new()
     }
 }
 
-impl AsdfBase {
+impl RasdfBase {
     /// number of records in database
     pub fn len(&self) -> usize {
         self.contents.len()
@@ -110,7 +110,7 @@ impl AsdfBase {
     }
 
     /// return basedata for given path, or None
-    pub fn entry(&self, path: &str) -> Option<&AsdfBaseData> {
+    pub fn entry(&self, path: &str) -> Option<&RasdfBaseData> {
         self.contents.get(path)
     }
 
@@ -127,12 +127,12 @@ impl AsdfBase {
         if let Some(data) = self.contents.get_mut(&pathstring) {
             // it's there, increment the rating.
             log_only(conf, &format!("Uprating path: {}", pathstring));
-            data.update_with(&AsdfBaseData::new(&conf, Some(1.0), None, ""));
+            data.update_with(&RasdfBaseData::new(&conf, Some(1.0), None, ""));
         } else {
             // new path, add it to the database
             log_only(conf, &format!("Adding new path: {}", pathstring));
             self.contents.insert(pathstring,
-                AsdfBaseData::new(&conf, Some(1.0), None, ""));
+                RasdfBaseData::new(&conf, Some(1.0), None, ""));
         }
     }
 
@@ -183,7 +183,7 @@ impl AsdfBase {
         // all okay, insert the row.
         self.contents.insert(
             pathstring,
-            AsdfBaseData {
+            RasdfBaseData {
                 rating,
                 date,
                 flags,
@@ -192,20 +192,20 @@ impl AsdfBase {
         self.contents.len()
     }
 
-    pub fn from_data(conf: &Config, lines: &str) -> AsdfBase {
-        let mut dbase = AsdfBase::new();
+    pub fn from_data(conf: &Config, lines: &str) -> RasdfBase {
+        let mut dbase = RasdfBase::new();
         for line in lines.split('\n') {
             dbase.add_line(conf, line);
         }
         dbase
     }
 
-    pub fn from_file(conf: &Config) -> AsdfBase {
+    pub fn from_file(conf: &Config) -> RasdfBase {
         if let Ok(contents) = fs::read_to_string(&conf.datafile) {
             // eprintln!("{}", &contents);
-            AsdfBase::from_data(conf, &contents)
+            RasdfBase::from_data(conf, &contents)
         } else {
-            AsdfBase::new()
+            RasdfBase::new()
         }
     }
 

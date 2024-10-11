@@ -37,7 +37,7 @@ fn test_fake_config() {
 fn test_make_database() {
     let conf = make_config();
 
-    let mut dbase = AsdfBase::new();
+    let mut dbase = RasdfBase::new();
     dbase.add_line(&conf, "/home/tim/tmp|2.2|123456|t");
     assert!( dbase.len() == 1 );
 }
@@ -46,18 +46,18 @@ fn test_make_database() {
 fn test_basedata_new() {
     let conf = make_config();
 
-    let _ = AsdfBaseData::new( &conf, Some(1.5), Some(123456), "tf",);
-    let _ = AsdfBaseData::new( &conf, None, None, "" );
+    let _ = RasdfBaseData::new( &conf, Some(1.5), Some(123456), "tf",);
+    let _ = RasdfBaseData::new( &conf, None, None, "" );
 }
 
 #[test]
 fn test_basedata_update() {
     let conf = make_config();
 
-    let mut bdata = AsdfBaseData::new(
+    let mut bdata = RasdfBaseData::new(
         &conf, Some(4.0), Some(121212), "tf"
     );
-    bdata.update_with(&AsdfBaseData::new(&conf, None, None, "tg"));
+    bdata.update_with(&RasdfBaseData::new(&conf, None, None, "tg"));
 
     assert_eq!(bdata.flags, "tfg");
     assert_eq!(bdata.date, conf.current_time);
@@ -69,7 +69,7 @@ fn test_add_from_string() {
     let conf = make_config();
 
     // Add two paths from a multi-line string
-    let mut dbase = AsdfBase::from_data(&conf, 
+    let mut dbase = RasdfBase::from_data(&conf, 
         "/home/tim/tmp|2.2|123456|td\n/home/tim/|1.9|123457|td"
     );
     assert!( dbase.len() == 2 );
@@ -87,7 +87,7 @@ fn test_add_from_string() {
 fn test_add_path() {
     let conf = make_config();
 
-    let mut dbase = AsdfBase::new();
+    let mut dbase = RasdfBase::new();
     dbase.add_path(&conf, "temp/my-temp-file");
     assert_eq!( dbase.len(), 1 );
 }
@@ -104,7 +104,7 @@ fn test_repeated_segment() {
     conf.find_dirs = false;
     conf.arguments = ["temp".to_string()].to_vec();
 
-    let mut dbase = AsdfBase::new();
+    let mut dbase = RasdfBase::new();
     dbase.add_path(&conf, "temp/my-temp-file");
     assert_eq!( dbase.len(), 1 );
 
